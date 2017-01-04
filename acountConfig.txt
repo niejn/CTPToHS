@@ -1,0 +1,12 @@
+#customer_Clientid:
+SHFE = 01415871
+CFFEX = 02001731
+DCE = 02337166
+CZCE = 34488070
+#customer_Userid:
+Userid = 205117
+#broker_Partid:
+SHFE = 0148
+CFFEX = 0018 
+DCE = 0110
+CZCE = 0055
