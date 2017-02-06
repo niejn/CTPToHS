@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 import xdrlib ,sys
-import xlrd
 import copy
-import xlwt
-import csv
 import os
 from datetime import *
 from kingNew import *
@@ -84,6 +81,11 @@ def main():
 
 
     print("\n程序运行正常结束！")
+    #raw_input()
+    #test = float(input())
+
+
+    os.system("pause")
     return
 
 if __name__=="__main__":

@@ -1,0 +1,18 @@
+# -*- coding: utf-8 -*-
+import xdrlib ,sys
+import xlrd
+import copy
+import xlwt
+import csv
+import os
+from datetime import *
+#from kingNew import *
+import pandas as pd
+
+
+data = pd.read_table('./txt/20161130_13887_交易结算单.txt',header=None,encoding='gb2312',delim_whitespace=True,index_col=0)
+print(data)
+#header=None:没有每列的column name，可以自己设定
+#encoding='gb2312':其他编码中文显示错误
+#delim_whitespace=True:用空格来分隔每行的数据
+#index_col=0:设置第1列数据作为index

@@ -1,0 +1,7 @@
+('c:\\users\\lenovo\\appdata\\local\\programs\\python\\python35\\lib\\site-packages\\xlwt-1.1.2-py3.5.egg',
+ None,
+ {'*.py', '*.so', '*.pyd', 'EGG-INFO', '*.pyc', '*.pyo'},
+ 'DATA',
+ [('xlwt\\excel-formula.g',
+   'c:\\users\\lenovo\\appdata\\local\\programs\\python\\python35\\lib\\site-packages\\xlwt-1.1.2-py3.5.egg\\xlwt\\excel-formula.g',
+   'DATA')])

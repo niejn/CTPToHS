@@ -7,7 +7,7 @@ import csv
 import os
 import re
 import datetime
-
+from decimal import getcontext, Decimal
 from prettytable import *
 import dbf
 Gdebug = False
@@ -95,6 +95,23 @@ class account:
 
         return
     def __init__(self):
+        self.__myName = ''
+        self.__Initialed = False
+        self.__Balance_bf = 0.00
+        self.__Deposit = 0.00
+        self.__Realized = 0.00
+        self.__MTM = 0.00
+        self.__Commission = 0.00
+        self.__Delivery_Fee = 0.00
+        self.__Balance_cf = 0.00
+        self.__Margin_Occupied = 0.00
+        self.__Fund_Avail = 0.00
+        self.__Risk_Degree = 0.00
+        self.__Currency = 'CNY'
+        self.__account = 0
+        self.__mydate = ''
+        self.__ChgInFund = 0.0
+        self.__Payment = 0.0
         print(" __init__(self)")
         return
     def setAccNdate(self, acc, date):
@@ -262,12 +279,7 @@ class account:
         f.write(z.get_string())
         f.close()
         return
-'''    def __init__(self, txt = []):
-        self.__header = txt[0].strip('\n')
 
-
-        print("  __init__(self, **accSum)")
-        return'''
 
 class positionsDetail:
     __myName = ''
@@ -283,7 +295,12 @@ class positionsDetail:
 
         return
     def __init__(self):
-        __myName = '持仓明细'
+        self.__myName = ''
+        self.__keyWords = ['交易所', '合约', '开仓日期', '投/保', '买/卖', '持仓量', '开仓价', '结算价', '盯市盈亏', '保证金']
+        self.__recList = []
+        self.__account = 0
+        self.__mydate = ''
+        self.__myName = '持仓明细'
         return
     def set(self, txt = []):
         list = []
@@ -402,6 +419,21 @@ class positions:#持仓汇总
 
         return
     def __init__(self):
+        self.__name = '持仓汇总'
+        self.__myList = []
+        self.IDToMultiplier = {}
+        self.__account = ''
+        self.__mydate = ''
+        self.__Clientids = []
+        self.__Userid = []
+        self.__Partid = []
+        self.__accdata = {}
+        self.__customer_Clientid = {}
+        self.__customer_Userid = {}
+        self.__broker_Partid = {}
+        self.__FutToExchange = {}
+        self.__FutToPartid = {}
+        self.__FutToClientid = {}
         self.__myList.clear()
 
         self.IDToMultiplier.clear()
@@ -419,7 +451,8 @@ class positions:#持仓汇总
 
 
         __myName = '持仓汇总'
-        print(__myName)
+        if Gdebug:
+            print(__myName)
         self.readConfig()
 
         return
@@ -457,21 +490,14 @@ class positions:#持仓汇总
         self.__mydate = date
 
         return
-    def writeDbf(self, path):
-        temphead = {}
-        temphead['结算会员号'] = str(self.__account)
-        table = dbf.Table(path)
-        table.open()
-        copyTable = table.new('./output/'+ self.__account + '_' + self.__mydate + '_settlementdetail.dbf')
-        copyTable.open()
-
+    def genTable(self, feeSet):
         templist = self.__myList.copy()
-        tempTabRows = {}
+        processedRec = {} #to record processed settlement 
         for onePos in templist:
             instrument = onePos['合约']
             buyHolding = 0
             sellHolding = 0
-            if not instrument in tempTabRows:
+            if instrument not in processedRec:
                 if '买' in onePos['买/卖']:
                     buyHolding = int(onePos['持仓数量'])
                 else:
@@ -482,21 +508,86 @@ class positions:#持仓汇总
                 temp_clientid = self.__FutToClientid[futureHead[0].upper()]
 
                 oneTabRow = [temp_partid, temp_clientid, onePos['合约'], float(onePos['结算价']), 0, 0, 0, 0, 0, 0, 0.00, 0.00,buyHolding, sellHolding, float(onePos['保证金占用']), float(onePos['持仓盯市盈亏']), 0.00 ]
-                tempTabRows[instrument] = oneTabRow
+                processedRec[instrument] = oneTabRow
             else:
                 if '买' in onePos['买/卖']:
                     buyHolding = int(onePos['持仓数量'])
                 else:
                     sellHolding = int(onePos['持仓数量'])
-                existRow = tempTabRows[instrument]
+                existRow = processedRec[instrument]
                 existRow[12] += buyHolding
                 existRow[13] += sellHolding
                 if float(onePos['保证金占用']) > existRow[15]:
                     existRow[14] = float(onePos['保证金占用'])
                 existRow[15] += float(onePos['持仓盯市盈亏'])
-                tempTabRows[instrument] = existRow
-        rowVals = tempTabRows.values()
-        rows = []
+                processedRec[instrument] = existRow
+
+        for instrument in feeSet:
+            tRec = feeSet[instrument]
+            if tRec['合约'] in processedRec:
+                processedRec[tRec['合约']][16] = tRec['手续费']
+            else:
+                buyHolding = 0
+                sellHolding = 0
+                #float(onePos['结算价'])
+                tclearPrice = 0.0
+                #float(onePos['保证金占用'])
+                tmargin = 0.0
+                #float(onePos['持仓盯市盈亏'])
+                tactual = 0.0
+                getWord = re.compile(u'[a-zA-Z]+');
+                futureHead = getWord.findall(tRec['合约'])
+                temp_partid = self.__FutToPartid[futureHead[0].upper()]
+                temp_clientid = self.__FutToClientid[futureHead[0].upper()]
+                tRow = [temp_partid, temp_clientid, tRec['合约'], tclearPrice, 0, 0, 0, 0, 0, 0, 0.00, 0.00,buyHolding, sellHolding, tmargin, tactual, tRec['手续费']]
+                processedRec[tRec['合约']] = tRow
+
+        self.__genTable = processedRec.values()
+
+        return
+    def addFeeSet(self, feeSet):
+        self.genTable(feeSet)
+        return
+    def writeDbf(self, path):
+        temphead = {}
+        temphead['结算会员号'] = str(self.__account)
+        table = dbf.Table(path)
+        table.open()
+        copyTable = table.new('./output/'+ self.__account + '_' + self.__mydate + '_settlementdetail.dbf')
+        copyTable.open()
+
+        # templist = self.__myList.copy()
+        # tempTabRows = {}
+        # for onePos in templist:
+        #     instrument = onePos['合约']
+        #     buyHolding = 0
+        #     sellHolding = 0
+        #     if not instrument in tempTabRows:
+        #         if '买' in onePos['买/卖']:
+        #             buyHolding = int(onePos['持仓数量'])
+        #         else:
+        #             sellHolding = int(onePos['持仓数量'])
+        #         getWord = re.compile(u'[a-zA-Z]+');
+        #         futureHead = getWord.findall(onePos['合约'])
+        #         temp_partid = self.__FutToPartid[futureHead[0].upper()]
+        #         temp_clientid = self.__FutToClientid[futureHead[0].upper()]
+        #
+        #         oneTabRow = [temp_partid, temp_clientid, onePos['合约'], float(onePos['结算价']), 0, 0, 0, 0, 0, 0, 0.00, 0.00,buyHolding, sellHolding, float(onePos['保证金占用']), float(onePos['持仓盯市盈亏']), 0.00 ]
+        #         tempTabRows[instrument] = oneTabRow
+        #     else:
+        #         if '买' in onePos['买/卖']:
+        #             buyHolding = int(onePos['持仓数量'])
+        #         else:
+        #             sellHolding = int(onePos['持仓数量'])
+        #         existRow = tempTabRows[instrument]
+        #         existRow[12] += buyHolding
+        #         existRow[13] += sellHolding
+        #         if float(onePos['保证金占用']) > existRow[15]:
+        #             existRow[14] = float(onePos['保证金占用'])
+        #         existRow[15] += float(onePos['持仓盯市盈亏'])
+        #         tempTabRows[instrument] = existRow
+        rowVals = self.__genTable
+
         for oneRow in rowVals:
             tempRecord = []
             for data in oneRow:
@@ -505,18 +596,7 @@ class positions:#持仓汇总
                 print(tuple(tempRecord))
             #table.append(tuple(tempRecord))
             copyTable.append(tuple(tempRecord))
-            tempRecord.clear()
-            if Gdebug:
-                print('')
-
-
-
-
-
-
-
-
-
+            #tempRecord.clear()
 
         copyTable.close()
         table.close()
@@ -602,7 +682,23 @@ class transaction:#成交明细
 
         return
     def __init__(self, acc, date):
-        __myName = 'ClientCapitalDetail'
+        self.__name = '成交明细'
+
+        self.__myList = []
+        self.IDToMultiplier = {}
+        self.__account = 0
+        self.__mydate = ''
+        self.__Clientids = []
+        self.__Userid = []
+        self.__Partid = []
+        self.__accdata = {}
+        self.__customer_Clientid = {}
+        self.__customer_Userid = {}
+        self.__broker_Partid = {}
+        self.__FutToExchange = {}
+        self.__FutToPartid = {}
+        self.__FutToClientid = {}
+        self.__myName = 'ClientCapitalDetail'
         self.__account = acc
         self.__mydate = date
         self.__myList.clear()
@@ -669,10 +765,70 @@ class transaction:#成交明细
 
         return
     def __init__(self):
-        __myName = '持仓汇总'
-        print(__myName)
+        self.__name = '成交明细'
+
+        self.__myList = []
+        self.IDToMultiplier = {}
+        self.__account = 0
+        self.__mydate = ''
+        self.__Clientids = []
+        self.__Userid = []
+        self.__Partid = []
+        self.__accdata = {}
+        self.__customer_Clientid = {}
+        self.__customer_Userid = {}
+        self.__broker_Partid = {}
+        self.__FutToExchange = {}
+        self.__FutToPartid = {}
+        self.__FutToClientid = {}
+        self.__myName = 'ClientCapitalDetail'
+        self.__account = 0
+        #self.__mydate = 0
+        self.__myName = '持仓汇总'
+        if Gdebug:
+            print(self.__myName)
         self.readConfig()
         self.__myList.clear()
+        return
+    #计算持仓汇总, settelmentDetail持仓汇总
+    def computeSetDet(self):
+
+        locList = self.__myList[:]
+        setDet = {}
+
+        for node in locList:
+            if node["合约"] not in setDet:
+                tempSDNode = {}
+                tempSDNode['卖'] = 0
+                tempSDNode['买'] = 0
+                if '买' in node['买/卖']:
+                    tempSDNode['买'] = int(node['手数'])
+
+                else:
+                    tempSDNode['卖'] = int(node['手数'])
+
+                tempSDNode['手续费'] = Decimal(node['手续费'])
+                tempSDNode['合约'] = node['合约']
+                tempSDNode['投/保'] = node['投/保']
+                setDet[node['合约']] = tempSDNode
+
+            else:
+                tempSDNode = setDet[node['合约']]
+                #print(tempSDNode)
+                if '买' in node['买/卖']:
+                    tempSDNode['买'] += int(node['手数'])
+                else:
+                    tempSDNode['卖'] += int(node['手数'])
+                tempSDNode['手续费'] += Decimal(node['手续费'])
+
+                print("===========================================")
+                print(setDet[node['合约']])
+
+
+
+        return setDet
+    def getFeeSet(self):
+
         return
     def set(self, txt = []):
         list = []
@@ -722,7 +878,8 @@ class transaction:#成交明细
             except KeyError as e:
                 print(e)
             else:
-                print('')
+                if Gdebug:
+                    print('++++++++++++++')
             TradeAmount = int(oneTrade['手数']) * float(oneTrade['成交价']) * self.IDToMultiplier[tFuture[0]]
             getWord = re.compile(u'[a-zA-Z]+');
             futureHead = getWord.findall(oneTrade['合约'])
@@ -734,8 +891,14 @@ class transaction:#成交明细
             strOrderid = str(pivotOrderid)
             pivotOrderid = pivotOrderid + 1
 
-            oneTabTrade = (temp_partid, temp_clientid, oneTrade['合约'], oneTrade['成交编号'], oneTrade['手数'], oneTrade['成交价'], str(TradeAmount), strTime, oneTrade['买/卖'], oneTrade['开平'], strOrderid, temp_Userid)
-            table.append(oneTabTrade)
+            if len(oneTrade['成交编号']) > 12:
+                oneTabTrade = (temp_partid, temp_clientid, oneTrade['合约'], oneTrade['成交编号'][-12:], oneTrade['手数'], oneTrade['成交价'], str(TradeAmount), strTime, oneTrade['买/卖'], oneTrade['开平'], strOrderid, temp_Userid)
+            else:
+
+                oneTabTrade = (temp_partid, temp_clientid, oneTrade['合约'], oneTrade['成交编号'], oneTrade['手数'], oneTrade['成交价'], str(TradeAmount), strTime, oneTrade['买/卖'], oneTrade['开平'], strOrderid, temp_Userid)
+            #table.append(oneTabTrade)
+            #print(oneTabTrade)
+            #print('====================')
             copyTable.append(oneTabTrade)
 
 
@@ -840,6 +1003,9 @@ class ClientCapitalDetail:
 
         return
     def __init__(self):
+        self.__account = 0
+        self.__mydate = ''
+        self.__tableList = []
         __myName = 'ClientCapitalDetail'
         self.__tableList.clear()
         return
@@ -948,6 +1114,7 @@ class kingNew:
     __myPositions = positions()
     __myTransaction = transaction()
     __myClientCapitalDetail = ClientCapitalDetail()
+    __GenTxt = False
     #
     keyWords = ['结算单', '资金状况', '持仓明细', '持仓汇总', '成交明细', '平仓明细', '出入金明细', '中信期货']
     settlementTxt = []
@@ -1042,7 +1209,7 @@ class kingNew:
     #     print(self.name)
     #     return
     def __init__(self, textList = []):
-        clearPath('./output')
+        #clearPath('./output')
         self.__myAcc = account()
         self.__myPositionsDetail = positionsDetail()
         self.__myPositions = positions()
@@ -1095,46 +1262,54 @@ class kingNew:
         if self.accountTxt:
             self.__myAcc.set(self.accountTxt)
             self.__myAcc.setAccNdate(self.__accNum, self.__date)
-            self.__myAcc.writeDbf(self.__myDBFPath + '/capital.dbf')
-            if GenTxt:
-                self.__myAcc.writeTxt(self.__myPath + 'Capital.txt', self.__strHeader)
+
         if self.positionsDetailTxt:
             self.__myPositionsDetail.set(self.positionsDetailTxt)
-            #self.__myPositionsDetail.writeDbf(self.__myPath)
-            if GenTxt:
-                self.__myPositionsDetail.writeTxt(self.__myPath)
+
+
+        #将每条交易的交易费用加起来
+        if self.transactionTxt:
+            self.__myTransaction.set(self.transactionTxt)
+            tempFeeSet = self.__myTransaction.computeSetDet()
+            self.__myTransaction.setAccNdate(self.__accNum, self.__date)
+
+        #需要将交易费用加上
         if self.positionsTxt:
             self.__myPositions.set(self.positionsTxt)
             self.__myPositions.setAccNdate(self.__accNum, self.__date)
-            #self.__myPositions.setHeader(self.__strHeader)
-            self.__myPositions.writeDbf(self.__myDBFPath + '/settlementdetail.dbf')
-            if GenTxt:
-                self.__myPositions.writeTxt(self.__myPath + 'SettlementDetail.txt', self.__strHeader)
-        else:
-            #print('')
-            if GenTxt:
-                self.__myPositions.writeTxt(self.__myPath + 'SettlementDetail.txt', self.__strHeader)
-        if self.transactionTxt:
-            self.__myTransaction.set(self.transactionTxt)
-            self.__myTransaction.setAccNdate(self.__accNum, self.__date)
-            self.__myTransaction.writeDbf(self.__myDBFPath + '/Trade.dbf')
-            if GenTxt:
-                self.__myTransaction.writeTxt(self.__myPath + 'Trade.txt', self.__strHeader)
+            self.__myPositions.addFeeSet(tempFeeSet)
+
+
         if self.depositTxt:
-            #tempCCD = ClientCapitalDetail(self.__accNum, self.__date)
+
             self.__myClientCapitalDetail.setAccNdate(self.__accNum, self.__date)
             self.__myClientCapitalDetail.set(self.depositTxt)
 
-            self.__myClientCapitalDetail.writeDbf(self.__myDBFPath + '/clientcapitaldetail.dbf')
 
-            if GenTxt:
-                self.__myClientCapitalDetail.writeTxt(self.__myPath + 'ClientCapitalDetail.txt', self.__strHeader)
 
-        tempDelivery = Delivery(self.__accNum, self.__date)
-        #tempDelivery.writeDbf(self.__myDBFPath + '/delivery.dbf')
-        if GenTxt:
-            tempDelivery.writeTxt(self.__myPath + 'Delivery.txt', self.__strHeader)
+        self.writeHSBill()
         return
-    def writeHSBill(self):
 
+
+
+
+    def writeHSBill(self):
+        if self.positionsTxt:
+            self.__myPositions.writeDbf(self.__myDBFPath + '/settlementdetail.dbf')
+        if self.transactionTxt:
+            self.__myTransaction.writeDbf(self.__myDBFPath + '/Trade.dbf')
+        if self.depositTxt:
+            self.__myClientCapitalDetail.writeDbf(self.__myDBFPath + '/clientcapitaldetail.dbf')
+        if self.accountTxt:
+            self.__myAcc.writeDbf(self.__myDBFPath + '/capital.dbf')
+
+        # if self.__GenTxt:
+        #     self.__myAcc.writeTxt(self.__myPath + 'Capital.txt', self.__strHeader)
+        #     self.__myClientCapitalDetail.writeTxt(self.__myPath + 'ClientCapitalDetail.txt', self.__strHeader)
+        #     self.__myPositions.writeTxt(self.__myPath + 'SettlementDetail.txt', self.__strHeader)
+        #     self.__myTransaction.writeTxt(self.__myPath + 'Trade.txt', self.__strHeader)
+        tempDelivery = Delivery(self.__accNum, self.__date)
+        tempDelivery.writeDbf(self.__myDBFPath + '/delivery.dbf')
+        if self.__GenTxt:
+            tempDelivery.writeTxt(self.__myPath + 'Delivery.txt', self.__strHeader)
         return

@@ -1,0 +1,118 @@
+# -*- coding: utf-8 -*-
+import xdrlib ,sys
+import xlrd
+import copy
+import xlwt
+import csv
+import os
+import re
+from datetime import *
+class account:
+    __Name = ''
+    __Initialed = False
+    __Balance_bf = 0.00
+    __Deposit = 0.00
+    __Realized = 0.00
+    __MTM = 0.00
+    __Commission = 0.00
+    __Delivery_Fee = 0.00
+    __Balance_cf = 0.00
+    __Margin_Occupied = 0.00
+    __Fund_Avail = 0.00
+    __Risk_Degree = 0.00
+    __Currency = 'CNY'
+    def __init__(self):
+        print(" __init__(self)")
+        return
+    def setAcc(self, txt = []):
+        self.__Name = txt[0].strip('\n')
+        for line in txt[1:]:
+            res = line.split(' ')
+            str = ' '.join(line.split())
+        return
+'''    def __init__(self, txt = []):
+        self.__header = txt[0].strip('\n')
+
+
+        print("  __init__(self, **accSum)")
+        return'''
+
+
+class kingNew:
+    __company = ''
+    __acc = ''
+    __date = ''
+    name = 'test'
+    __myAcc = account()
+    keyWords = ['结算单', '资金状况', '持仓明细', '持仓汇总', '成交明细']
+    settlementTxt = []
+    accountTxt = []
+    depositTxt = []
+    transactionTxt = []
+    positionsDetailTxt = []
+    positionsTxt = []
+    def setSettlementTxt(self, txt = []):
+        for line in txt:
+            self.settlementTxt.append(line)
+        return
+    def setAccountTxt(self, txt = []):
+        self.accountTxt.extend(txt)
+        return
+    def setPositionsDetailTxt(self, txt = []):
+        self.positionsDetailTxt.extend(txt)
+        return
+    def setPositionsTxt(self, txt = []):
+        self.positionsTxt.extend(txt)
+        return
+    def setTransactionTxt(self, txt = []):
+        self.transactionTxt.extend(txt)
+        return
+    operator = {'结算单':setSettlementTxt, '资金状况':setAccountTxt, '持仓明细':setPositionsDetailTxt, '持仓汇总':setPositionsTxt, '成交明细':setTransactionTxt}
+    def __init__(self):
+        print('__init__')
+        print(self.name)
+        return
+    def __init__(self, textList = []):
+        print('__init__')
+        block = []
+        for line in textList:
+            if line.strip('\n') == '' or '---' in line:
+                continue
+            else:
+                block.append(line.strip())
+
+        self.cleanRawTxt(block)
+        return
+
+    def getBlockType(self, line):
+
+        for key in self.keyWords:
+            if key in line:
+                print(key)
+
+        return
+    def cleanRawTxt(self,txt):
+        cleanTxt = []
+        txtcup = []
+        tempkey = ''
+        newBlock = False
+
+        for line in txt:
+            for key in self.keyWords:
+                if key in line:
+                    if txtcup:
+                        self.operator.get(tempkey)(self, txtcup)
+                        txtcup.clear()
+                    tempkey = key
+                    newBlock = True
+                    break
+
+            txtcup.append(line)
+
+        if txtcup:
+            self.operator.get(tempkey)(self, txtcup)
+            txtcup.clear()
+
+        self.__myAcc.setAcc(self.accountTxt)
+
+        return
