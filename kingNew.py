@@ -457,6 +457,10 @@ class positions:#持仓汇总
 
         return
     def set(self, txt = []):
+        if not txt:
+            if Gdebug:
+                print("positions txt is empty！")
+            return
         list = []
         phanzi = re.compile(u'[\u4e00-\u9fa5]+\/?[\u4e00-\u9fa5]+');
         keys = phanzi.findall(txt[1])
@@ -527,8 +531,8 @@ class positions:#持仓汇总
             if tRec['合约'] in processedRec:
                 processedRec[tRec['合约']][16] = tRec['手续费']
             else:
-                buyHolding = 0
-                sellHolding = 0
+                buyHolding = tRec['买']
+                sellHolding = tRec['卖']
                 #float(onePos['结算价'])
                 tclearPrice = 0.0
                 #float(onePos['保证金占用'])
@@ -556,36 +560,7 @@ class positions:#持仓汇总
         copyTable = table.new('./output/'+ self.__account + '_' + self.__mydate + '_settlementdetail.dbf')
         copyTable.open()
 
-        # templist = self.__myList.copy()
-        # tempTabRows = {}
-        # for onePos in templist:
-        #     instrument = onePos['合约']
-        #     buyHolding = 0
-        #     sellHolding = 0
-        #     if not instrument in tempTabRows:
-        #         if '买' in onePos['买/卖']:
-        #             buyHolding = int(onePos['持仓数量'])
-        #         else:
-        #             sellHolding = int(onePos['持仓数量'])
-        #         getWord = re.compile(u'[a-zA-Z]+');
-        #         futureHead = getWord.findall(onePos['合约'])
-        #         temp_partid = self.__FutToPartid[futureHead[0].upper()]
-        #         temp_clientid = self.__FutToClientid[futureHead[0].upper()]
-        #
-        #         oneTabRow = [temp_partid, temp_clientid, onePos['合约'], float(onePos['结算价']), 0, 0, 0, 0, 0, 0, 0.00, 0.00,buyHolding, sellHolding, float(onePos['保证金占用']), float(onePos['持仓盯市盈亏']), 0.00 ]
-        #         tempTabRows[instrument] = oneTabRow
-        #     else:
-        #         if '买' in onePos['买/卖']:
-        #             buyHolding = int(onePos['持仓数量'])
-        #         else:
-        #             sellHolding = int(onePos['持仓数量'])
-        #         existRow = tempTabRows[instrument]
-        #         existRow[12] += buyHolding
-        #         existRow[13] += sellHolding
-        #         if float(onePos['保证金占用']) > existRow[15]:
-        #             existRow[14] = float(onePos['保证金占用'])
-        #         existRow[15] += float(onePos['持仓盯市盈亏'])
-        #         tempTabRows[instrument] = existRow
+
         rowVals = self.__genTable
 
         for oneRow in rowVals:
@@ -1278,7 +1253,12 @@ class kingNew:
             self.__myPositions.set(self.positionsTxt)
             self.__myPositions.setAccNdate(self.__accNum, self.__date)
             self.__myPositions.addFeeSet(tempFeeSet)
-
+        elif self.transactionTxt:
+            self.__myPositions.setAccNdate(self.__accNum, self.__date)
+            self.__myPositions.addFeeSet(tempFeeSet)
+            print("")
+        else:
+            print('')
 
         if self.depositTxt:
 
@@ -1294,7 +1274,7 @@ class kingNew:
 
 
     def writeHSBill(self):
-        if self.positionsTxt:
+        if self.positionsTxt or self.transactionTxt:
             self.__myPositions.writeDbf(self.__myDBFPath + '/settlementdetail.dbf')
         if self.transactionTxt:
             self.__myTransaction.writeDbf(self.__myDBFPath + '/Trade.dbf')
