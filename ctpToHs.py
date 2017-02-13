@@ -4,6 +4,7 @@ import copy
 import os
 from datetime import *
 from kingNew import *
+from aggregateFutures import *
 import io
 #把datetime转成字符串
 def datetime_toString(dt):
@@ -65,6 +66,78 @@ def readBill_All(path):
 def processBill(text):
 
     return
+
+def aggregate(textContainer = []):
+    allPositions = []
+    for text in textContainer:
+        tempAgg = aggregateFutures(text)
+        tPostions = tempAgg.getPositions()
+        allPositions.append(tPostions)
+
+    parse = '__________________________________________________________________________'
+
+    setDet = {}
+
+    for eachPosition in allPositions:
+        print(parse)
+        for node in eachPosition:
+            print(node)
+            if node['合约'] not in setDet:
+                tempAgNode = {}
+                tempAgNode['卖'] = 0
+                tempAgNode['买'] = 0
+                tempAgNode['卖成交价'] = 0
+                tempAgNode['买成交价'] = 0
+                tempAgNode['持仓盯市盈亏'] = 0
+                tempAgNode['卖保证金占用'] = 0
+                tempAgNode['买保证金占用'] = 0
+                if '买' in node['买/卖']:
+                    tempAgNode['买'] = int(node['持仓数量'])
+                    tempAgNode['买成交价'] = Decimal(node['开仓均价'])
+                    tempAgNode['买保证金占用'] = Decimal(node['保证金占用'])
+                else:
+                    tempAgNode['卖'] = int(node['持仓数量'])
+                    tempAgNode['卖成交价'] = Decimal(node['开仓均价'])
+                    tempAgNode['卖保证金占用'] = Decimal(node['保证金占用'])
+
+                #tempAgNode['手续费'] = Decimal(node['手续费'])
+                tempAgNode['合约'] = node['合约']
+                #tempAgNode['投/保'] = node['投/保']
+                tempAgNode['持仓盯市盈亏'] = Decimal(node['持仓盯市盈亏'])
+                setDet[node['合约']] = tempAgNode
+            else:
+                tempAgNode = setDet[node['合约']]
+                #print(tempSDNode)
+                if '买' in node['买/卖']:
+                    oldBuyAvg = tempAgNode['买成交价']
+                    oldBuySum = tempAgNode['买']
+                    nodeBuyAvg = Decimal(node['开仓均价'])
+                    nodeBuySum = int(node['持仓数量'])
+                    newBuyAvg = oldBuyAvg * oldBuySum + nodeBuyAvg * nodeBuySum
+                    newBuyAvg = newBuyAvg / (oldBuySum + nodeBuySum)
+                    tempAgNode['买成交价'] = newBuyAvg
+                    tempAgNode['买'] += int(node['持仓数量'])
+                    tempAgNode['买保证金占用'] += Decimal(node['保证金占用'])
+                else:
+                    oldSellAvg = tempAgNode['卖成交价']
+                    oldSellSum = tempAgNode['卖']
+                    nodeSellAvg = Decimal(node['开仓均价'])
+                    nodeSellSum = int(node['持仓数量'])
+                    newSellAvg = oldSellAvg * oldSellSum + nodeSellAvg * nodeSellSum
+                    newSellAvg = newSellAvg / (oldSellSum + nodeSellSum)
+                    tempAgNode['卖保证金占用'] += Decimal(node['保证金占用'])
+                    tempAgNode['卖成交价'] = newSellAvg
+                    tempAgNode['卖'] += int(node['持仓数量'])
+                tempAgNode['持仓盯市盈亏'] += Decimal(node['持仓盯市盈亏'])
+    #aggregate all positons
+    for futureID in setDet:
+        tempAgNode = setDet[futureID]
+        if tempAgNode['买保证金占用'] >= tempAgNode['卖保证金占用']:
+            tempAgNode['单边最大方向'] = '买'
+        else:
+            tempAgNode['单边最大方向'] = '卖'
+    return setDet
+
 def main():
 
     path = './txt'
@@ -73,8 +146,12 @@ def main():
     #subAccPath = presentCTPBill
 
     textContainer = readBill_All(subAccPath)
+
+    #aggregateFutures tempAgg();
+    posAeg = aggregate(textContainer)
+
     for text in textContainer:
-        tempKN = kingNew(text)
+        tempKN = kingNew(text, posAeg)
         tempKN.clear();
         del tempKN
 
