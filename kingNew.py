@@ -3,10 +3,11 @@
 import os
 import re
 import datetime
-
+import glob
 from decimal import *
 from prettytable import *
 import dbf
+import traceback
 
 Gdebug = False
 
@@ -28,30 +29,52 @@ def clearPath(path):
 def cleanDBFTables(path):
     #sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding='UTF8') #改变标准输出的默认编码
     files = os.listdir(path)
-    for file in files:
-        file = path + '/' + file
-        if os.path.isdir(file):
-            continue
-        else:
-            #srcFile = open(file, 'r')
-            table = dbf.Table(file)
-            table.open()
-            for record in table:
+    filesWanted = path + '//*.dbf'
+    ans = glob.glob(filesWanted)
+    for file in ans:
+        table = dbf.Table(file)
+        table.open()
+        for record in table:
                 #record.decode("ascii").encode("utf-8")
 
-                if Gdebug:
-                    print('-'*200)
-                    print(record)
-                    print('-'*200)
-                dbf.delete(record)
-
-            table.pack()
             if Gdebug:
-                print('+'*200)
-            for record in table:
-                if Gdebug:
-                    print(record)
-            table.close()
+                print('-'*200)
+                print(record)
+                print('-'*200)
+            dbf.delete(record)
+
+        table.pack()
+        if Gdebug:
+            print('+'*200)
+        for record in table:
+            if Gdebug:
+                print(record)
+        table.close()
+
+    # for file in files:
+    #     file = path + '/' + file
+    #     if os.path.isdir(file):
+    #         continue
+    #     else:
+    #         #srcFile = open(file, 'r')
+    #         table = dbf.Table(file)
+    #         table.open()
+    #         for record in table:
+    #             #record.decode("ascii").encode("utf-8")
+    #
+    #             if Gdebug:
+    #                 print('-'*200)
+    #                 print(record)
+    #                 print('-'*200)
+    #             dbf.delete(record)
+    #
+    #         table.pack()
+    #         if Gdebug:
+    #             print('+'*200)
+    #         for record in table:
+    #             if Gdebug:
+    #                 print(record)
+    #         table.close()
 
 
 
@@ -891,7 +914,17 @@ class transaction:#成交明细
             else:
                 if Gdebug:
                     print('++++++++++++++')
-            TradeAmount = int(oneTrade['手数']) * float(oneTrade['成交价']) * self.IDToMultiplier[tFuture[0]]
+            try:
+                TradeAmount = int(oneTrade['手数']) * float(oneTrade['成交价']) * self.IDToMultiplier[tFuture[0]]
+            except KeyError as e:
+                print(e)
+                print("合约不存在，请补全配置文件futuresConfig.txt")
+                print("print exc")
+                traceback.print_exc(file=sys.stdout)
+                if Gdebug:
+                    print('++++++++++++++')
+
+
             getWord = re.compile(u'[a-zA-Z]+');
             futureHead = getWord.findall(oneTrade['合约'])
             temp_partid = self.__FutToPartid[futureHead[0].upper()]

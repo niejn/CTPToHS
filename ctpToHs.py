@@ -26,7 +26,7 @@ def timestamp_toString(stamp):
 def datetime_toTimestamp(dateTim):
     return time.mktime(dateTim.timetuple())
 
-
+#need read gbk txt error
 def readBill(path):
     blockList = []
     files = os.listdir(path)
@@ -37,6 +37,7 @@ def readBill(path):
         textlist = srcFile.readlines()
     srcFile.close()
     return textlist
+#need read gbk txt error
 def readBill_first(path):
     files = os.listdir(path)
     file = path + '/' + files[0]
@@ -48,6 +49,7 @@ def readBill_first(path):
     finally:
         file_object.close( )
     return all_the_text
+#bug fixed read gbk txt error
 def readBill_All(path):
     files = os.listdir(path)
     textContainer = []
@@ -56,8 +58,16 @@ def readBill_All(path):
         if not os.path.isfile(file):
             continue
         if file.endswith('txt'):
-            with open(file, 'r') as srcFile:
-                text = srcFile.readlines()
+            with open(file, 'rb') as srcFile:
+                #content = fp.read().decode('utf-8')
+                content = srcFile.read().decode('utf-8')
+                # for oneline in content:
+                #     oneline.decode('utf-8')
+                #content = content.strip('\r')
+                text = content.split('\n')
+
+
+                #text = srcFile.readlines()
             textContainer.append(text)
             srcFile.close()
 
