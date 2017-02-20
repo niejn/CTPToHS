@@ -8,7 +8,7 @@ from decimal import *
 from prettytable import *
 import dbf
 import traceback
-
+from KingNewSchema import *
 Gdebug = False
 
 def clearPath(path):
@@ -160,20 +160,30 @@ class account:
 
 
 
+        try:
+            #self.__Balance_bf = float(NameToValue['上次结算金'])
+            self.__Balance_bf = float(NameToValue['上次结算资金'])
+            self.__Delivery_Fee = float(NameToValue['交割手续费'])
+            #self.__Deposit = float(NameToValue['出 入 金'])
+            self.__Deposit = float(NameToValue['出入金'])
+            self.__Balance_cf = float(NameToValue['期末结存'])
+            self.__Realized = float(NameToValue['平仓盈亏'])
+            self.__Margin_Occupied = float(NameToValue['保证金占用'])
+            self.__MTM = float(NameToValue['持仓盈亏'])
+            self.__Fund_Avail = float(NameToValue['可用资金'])
+            self.__Commission = float(NameToValue['手续费'])
+            self.__Risk_Degree = float(NameToValue['风险度'])
+            self.__Currency = 'CNY'
+            self.__ChgInFund = 0.00 + self.__MTM - self.__Commission -self.__Payment
+            self.__Initialed = True
 
-        self.__Balance_bf = float(NameToValue['上次结算金'])
-        self.__Delivery_Fee = float(NameToValue['交割手续费'])
-        self.__Deposit = float(NameToValue['出 入 金'])
-        self.__Balance_cf = float(NameToValue['期末结存'])
-        self.__Realized = float(NameToValue['平仓盈亏'])
-        self.__Margin_Occupied = float(NameToValue['保证金占用'])
-        self.__MTM = float(NameToValue['持仓盈亏'])
-        self.__Fund_Avail = float(NameToValue['可用资金'])
-        self.__Commission = float(NameToValue['手续费'])
-        self.__Risk_Degree = float(NameToValue['风险度'])
-        self.__Currency = 'CNY'
-        self.__ChgInFund = 0.00 + self.__MTM - self.__Commission -self.__Payment
-        self.__Initialed = True
+        except KeyError as e:
+            print("金牛导出结算单字段名发生改变，请联系开发人员")
+            print(e)
+            traceback.print_exc(file=sys.stdout)
+        except Exception as e:
+            print(e)
+            traceback.print_exc(file=sys.stdout)
         return
     def writeDbf(self, path):
         temphead = {}
@@ -526,41 +536,47 @@ class positions:#持仓汇总
         return ans
     def genTable(self, feeSet):
         templist = self.__myList.copy()
-        processedRec = {} #to record processed settlement 
+        processedRec = {} #to record processed settlement
+        global GSpositions
+        print(GSpositions)
+        #positions = {'Instrument':'合约代码', 'B/S':'买/卖', 'Lots':'手数', 'AvgOpenPrice':'开仓均价', 'SttlToday':'结算价', 'MTMP/L':'持仓盯市盈亏', 'MarginOccupied':'保证金占用', 'S/H':'投/保'}
         for onePos in templist:
-            instrument = onePos['合约']
+            #print(positions['Instrument'])
+            testing = GSpositions['Instrument']
+            instrument = onePos[GSpositions['Instrument']]
             buyHolding = 0
             sellHolding = 0
             if instrument not in processedRec:
-                if '买' in onePos['买/卖']:
-                    buyHolding = int(onePos['持仓数量'])
+                if '买' in onePos[GSpositions['B/S']]:
+                    buyHolding = int(onePos[GSpositions['Lots']])
                 else:
-                    sellHolding = int(onePos['持仓数量'])
+                    sellHolding = int(onePos[GSpositions['Lots']])
                 getWord = re.compile(u'[a-zA-Z]+');
-                futureHead = getWord.findall(onePos['合约'])
+                futureHead = getWord.findall(onePos[GSpositions['Instrument']])
                 temp_partid = self.__FutToPartid[futureHead[0].upper()]
                 temp_clientid = self.__FutToClientid[futureHead[0].upper()]
                 temp_Margin = 0
                 #temp_Margin = float(onePos['保证金占用'])
-                if self.getPeakValDir(onePos['合约']) in onePos['买/卖']:
-                    temp_Margin = float(onePos['保证金占用'])
-                oneTabRow = [temp_partid, temp_clientid, onePos['合约'], float(onePos['结算价']), 0, 0, 0, 0, 0, 0, 0.00, 0.00,buyHolding, sellHolding, temp_Margin, float(onePos['持仓盯市盈亏']), 0.00 ]
+                if self.getPeakValDir(onePos[GSpositions['Instrument']]) in onePos[GSpositions['B/S']]:
+                    temp_Margin = float(onePos[GSpositions['MarginOccupied']])
+                oneTabRow = [temp_partid, temp_clientid, onePos[GSpositions['Instrument']], float(onePos[GSpositions['SttlToday']]), 0, 0, 0, 0, 0, 0, 0.00, 0.00,buyHolding, sellHolding, temp_Margin, float(onePos[GSpositions['MTMP/L']]), 0.00 ]
                 processedRec[instrument] = oneTabRow
             else:
-                if '买' in onePos['买/卖']:
-                    buyHolding = int(onePos['持仓数量'])
+                if '买' in onePos[GSpositions['B/S']]:
+                    buyHolding = int(onePos[GSpositions['Lots']])
                 else:
-                    sellHolding = int(onePos['持仓数量'])
+                    sellHolding = int(onePos[GSpositions['Lots']])
 
                 existRow = processedRec[instrument]
                 existRow[12] += buyHolding
                 existRow[13] += sellHolding
-                if self.getPeakValDir(onePos['合约']) in onePos['买/卖']:
-                    temp_Margin = float(onePos['保证金占用'])
+                #判断是否是单边最大方向，如果是，则更新保证金占用字段，如果不是则不更新
+                if self.getPeakValDir(onePos[GSpositions['Instrument']]) in onePos[GSpositions['B/S']]:
+                    temp_Margin = float(onePos[GSpositions['MarginOccupied']])
                     existRow[14] = temp_Margin
                 # if float(onePos['保证金占用']) > existRow[15]:
                 #     existRow[14] = float(onePos['保证金占用'])
-                existRow[15] += float(onePos['持仓盯市盈亏'])
+                existRow[15] += float(onePos[GSpositions['MTMP/L']])
                 processedRec[instrument] = existRow
 
         for instrument in feeSet:
@@ -807,56 +823,58 @@ class transaction:#成交明细
         return
     #计算持仓汇总, settelmentDetail持仓汇总
     def computeSetDet(self):
-
+        global GStransactionRecord
         locList = self.__myList[:]
         setDet = {}
         #getcontext().prec = 6
         #getcontext().rounding = ROUND_FLOOR
-
+        #GStransactionRecord = {'Instrument':'合约代码', 'Exchange':'交易所', 'Date':'成交日期', 'S/H':'投/保', 'B/S':'买/卖', 'Lots':'手数', 'Price':'成交价', 'O/C':'开平', 'Fee':'手续费 ', 'Trans.No.':'成交编号'}
+        #GStransactionRecord['Fee']
         for node in locList:
-            if node["合约"] not in setDet:
+            if node[GStransactionRecord['Instrument']] not in setDet:
                 tempSDNode = {}
                 tempSDNode['卖'] = 0
                 tempSDNode['买'] = 0
                 tempSDNode['卖成交价'] = 0
                 tempSDNode['买成交价'] = 0
-                if '买' in node['买/卖']:
-                    tempSDNode['买'] = int(node['手数'])
-                    tempSDNode['买成交价'] = Decimal(node['成交价'])
+                if '买' in node[GStransactionRecord['B/S']]:
+                    tempSDNode['买'] = int(node[GStransactionRecord['Lots']])
+                    tempSDNode['买成交价'] = Decimal(node[GStransactionRecord['Price']])
                 else:
-                    tempSDNode['卖'] = int(node['手数'])
-                    tempSDNode['卖成交价'] = Decimal(node['成交价'])
-                tempSDNode['手续费'] = Decimal(node['手续费'])
-                tempSDNode['合约'] = node['合约']
-                tempSDNode['投/保'] = node['投/保']
-                setDet[node['合约']] = tempSDNode
+                    tempSDNode['卖'] = int(node[GStransactionRecord['Lots']])
+                    tempSDNode['卖成交价'] = Decimal(node[GStransactionRecord['Price']])
+                tempSDNode['手续费'] = Decimal(node[GStransactionRecord['Fee']])
+                tempSDNode['合约'] = node[GStransactionRecord['Instrument']]
+                tempSDNode['投/保'] = node[GStransactionRecord['S/H']]
+                setDet[node[GStransactionRecord['Instrument']]] = tempSDNode
 
             else:
-                tempSDNode = setDet[node['合约']]
+                tempSDNode = setDet[node[GStransactionRecord['Instrument']]]
                 #print(tempSDNode)
-                if '买' in node['买/卖']:
+                if '买' in node[GStransactionRecord['B/S']]:
                     oldBuyAvg = tempSDNode['买成交价']
                     oldBuySum = tempSDNode['买']
-                    nodeBuyAvg = Decimal(node['成交价'])
-                    nodeBuySum = int(node['手数'])
+                    nodeBuyAvg = Decimal(node[GStransactionRecord['Price']])
+                    nodeBuySum = int(node[GStransactionRecord['Lots']])
                     newBuyAvg = oldBuyAvg * oldBuySum + nodeBuyAvg * nodeBuySum
                     newBuyAvg = newBuyAvg / (oldBuySum + nodeBuySum)
                     tempSDNode['买成交价'] = newBuyAvg
-                    tempSDNode['买'] += int(node['手数'])
+                    tempSDNode['买'] += int(node[GStransactionRecord['Lots']])
                 else:
                     oldSellAvg = tempSDNode['卖成交价']
                     oldSellSum = tempSDNode['卖']
-                    nodeSellAvg = Decimal(node['成交价'])
-                    nodeSellSum = int(node['手数'])
+                    nodeSellAvg = Decimal(node[GStransactionRecord['Price']])
+                    nodeSellSum = int(node[GStransactionRecord['Lots']])
                     newSellAvg = oldSellAvg * oldSellSum + nodeSellAvg * nodeSellSum
                     newSellAvg = newSellAvg / (oldSellSum + nodeSellSum)
 
                     tempSDNode['卖成交价'] = newSellAvg
-                    tempSDNode['卖'] += int(node['手数'])
-                tempSDNode['手续费'] += Decimal(node['手续费'])
+                    tempSDNode['卖'] += int(node[GStransactionRecord['Lots']])
+                tempSDNode['手续费'] += Decimal(node[GStransactionRecord['Fee']])
 
-                print("===========================================")
-                print(setDet[node['合约']])
+                if Gdebug:
+                    print("===========================================")
+                    print(setDet[node[GStransactionRecord['Instrument']]])
 
 
 
@@ -895,7 +913,7 @@ class transaction:#成交明细
             print(list)
         return
     def writeDbf(self, path):
-
+        #要替换之前的字典数据结构的key
         tempTradeList = self.__myList.copy()
         table = dbf.Table(path)
         table.open()
@@ -1252,6 +1270,23 @@ class kingNew:
     #     print('__init__')
     #     print(self.name)
     #     return
+    def isGarbageLine(self, txt):
+        ans = False
+        phanzi=re.compile(u'[\u4e00-\u9fa5]+');
+
+        #res = phanzi.findall(line)
+        if '---' in txt:
+            res = phanzi.findall(txt)
+            if res:
+                #txt = res[0]
+                ans = False
+
+            else:
+                ans = True
+        else:
+            ans = False
+
+        return ans
     def __init__(self, textList = [], posAeg = {}):
 
         #需要将类开头的类变量在这里初始化，变为对象独有的一个变量
@@ -1275,7 +1310,8 @@ class kingNew:
         print('__init__')
         block = []
         for line in textList:
-            if line.strip('\n') == '' or '---' in line:
+            #if line.strip('\n') == '' or '---' in line:
+            if line.strip('\n') == '' or self.isGarbageLine(line):
                 continue
             else:
                 block.append(line.strip())
@@ -1299,17 +1335,19 @@ class kingNew:
         cleanDBFTables(self.__myDBFPath)
         GenTxt = False
         for line in txt:
-            for key in self.keyWords:
-                if key in line:
-                    if txtcup:
-                        if tempkey in self.operator:
-                            self.operator.get(tempkey)(self, txtcup)
-                        txtcup.clear()
-                    tempkey = key
-                    newBlock = True
-                    break
-
-            txtcup.append(line)
+            if line:
+                for key in self.keyWords:
+                    if key in line:
+                        if txtcup:
+                            if tempkey in self.operator:
+                                self.operator.get(tempkey)(self, txtcup)
+                            txtcup.clear()
+                        tempkey = key
+                        newBlock = True
+                        break
+            #if len(line) > 0 and ('--' not in line):
+            if len(line) > 0:
+                txtcup.append(line)
 
         if txtcup:
             self.operator.get(tempkey)(self, txtcup)
@@ -1342,7 +1380,7 @@ class kingNew:
             print("")
         else:
             print('')
-
+        #正常情况下，不会执行，因为金牛导出账单没有这一项
         if self.depositTxt:
 
             self.__myClientCapitalDetail.setAccNdate(self.__accNum, self.__date)

@@ -5,6 +5,7 @@ import os
 from datetime import *
 from kingNew import *
 from aggregateFutures import *
+from KingNewSchema import *
 import io
 #把datetime转成字符串
 def datetime_toString(dt):
@@ -78,6 +79,7 @@ def processBill(text):
     return
 
 def aggregate(textContainer = []):
+    global positions
     allPositions = []
     for text in textContainer:
         tempAgg = aggregateFutures(text)
@@ -91,8 +93,8 @@ def aggregate(textContainer = []):
     for eachPosition in allPositions:
         print(parse)
         for node in eachPosition:
-            print(node)
-            if node['合约'] not in setDet:
+            #print(node)
+            if node[positions['Instrument']] not in setDet:
                 tempAgNode = {}
                 tempAgNode['卖'] = 0
                 tempAgNode['买'] = 0
@@ -101,44 +103,44 @@ def aggregate(textContainer = []):
                 tempAgNode['持仓盯市盈亏'] = 0
                 tempAgNode['卖保证金占用'] = 0
                 tempAgNode['买保证金占用'] = 0
-                if '买' in node['买/卖']:
-                    tempAgNode['买'] = int(node['持仓数量'])
-                    tempAgNode['买成交价'] = Decimal(node['开仓均价'])
-                    tempAgNode['买保证金占用'] = Decimal(node['保证金占用'])
+                if '买' in node[positions['B/S']]:
+                    tempAgNode['买'] = int(node[positions['Lots']])
+                    tempAgNode['买成交价'] = Decimal(node[positions['AvgOpenPrice']])
+                    tempAgNode['买保证金占用'] = Decimal(node[positions['MarginOccupied']])
                 else:
-                    tempAgNode['卖'] = int(node['持仓数量'])
-                    tempAgNode['卖成交价'] = Decimal(node['开仓均价'])
-                    tempAgNode['卖保证金占用'] = Decimal(node['保证金占用'])
+                    tempAgNode['卖'] = int(node[positions['Lots']])
+                    tempAgNode['卖成交价'] = Decimal(node[positions['AvgOpenPrice']])
+                    tempAgNode['卖保证金占用'] = Decimal(node[positions['MarginOccupied']])
 
                 #tempAgNode['手续费'] = Decimal(node['手续费'])
-                tempAgNode['合约'] = node['合约']
+                tempAgNode['合约'] = node[positions['Instrument']]
                 #tempAgNode['投/保'] = node['投/保']
-                tempAgNode['持仓盯市盈亏'] = Decimal(node['持仓盯市盈亏'])
-                setDet[node['合约']] = tempAgNode
+                tempAgNode['持仓盯市盈亏'] = Decimal(node[positions['MTMP/L']])
+                setDet[node[positions['Instrument']]] = tempAgNode
             else:
-                tempAgNode = setDet[node['合约']]
+                tempAgNode = setDet[node[positions['Instrument']]]
                 #print(tempSDNode)
-                if '买' in node['买/卖']:
+                if '买' in node[positions['B/S']]:
                     oldBuyAvg = tempAgNode['买成交价']
                     oldBuySum = tempAgNode['买']
-                    nodeBuyAvg = Decimal(node['开仓均价'])
-                    nodeBuySum = int(node['持仓数量'])
+                    nodeBuyAvg = Decimal(node[positions['AvgOpenPrice']])
+                    nodeBuySum = int(node[positions['Lots']])
                     newBuyAvg = oldBuyAvg * oldBuySum + nodeBuyAvg * nodeBuySum
                     newBuyAvg = newBuyAvg / (oldBuySum + nodeBuySum)
                     tempAgNode['买成交价'] = newBuyAvg
-                    tempAgNode['买'] += int(node['持仓数量'])
-                    tempAgNode['买保证金占用'] += Decimal(node['保证金占用'])
+                    tempAgNode['买'] += int(node[positions['Lots']])
+                    tempAgNode['买保证金占用'] += Decimal(node[positions['MarginOccupied']])
                 else:
                     oldSellAvg = tempAgNode['卖成交价']
                     oldSellSum = tempAgNode['卖']
-                    nodeSellAvg = Decimal(node['开仓均价'])
-                    nodeSellSum = int(node['持仓数量'])
+                    nodeSellAvg = Decimal(node[positions['AvgOpenPrice']])
+                    nodeSellSum = int(node[positions['Lots']])
                     newSellAvg = oldSellAvg * oldSellSum + nodeSellAvg * nodeSellSum
                     newSellAvg = newSellAvg / (oldSellSum + nodeSellSum)
-                    tempAgNode['卖保证金占用'] += Decimal(node['保证金占用'])
+                    tempAgNode['卖保证金占用'] += Decimal(node[positions['MarginOccupied']])
                     tempAgNode['卖成交价'] = newSellAvg
-                    tempAgNode['卖'] += int(node['持仓数量'])
-                tempAgNode['持仓盯市盈亏'] += Decimal(node['持仓盯市盈亏'])
+                    tempAgNode['卖'] += int(node[positions['Lots']])
+                tempAgNode['持仓盯市盈亏'] += Decimal(node[positions['MTMP/L']])
     #aggregate all positons
     for futureID in setDet:
         tempAgNode = setDet[futureID]

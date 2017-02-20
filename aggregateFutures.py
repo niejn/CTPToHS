@@ -312,6 +312,23 @@ class positions:#持仓汇总
 
         return
 class aggregateFutures:
+    def isGarbageLine(self, txt):
+        ans = False
+        phanzi=re.compile(u'[\u4e00-\u9fa5]+');
+
+        #res = phanzi.findall(line)
+        if '---' in txt:
+            res = phanzi.findall(txt)
+            if res:
+                #txt = res[0]
+                ans = False
+
+            else:
+                ans = True
+        else:
+            ans = False
+
+        return ans
     def __init__(self, textList = []):
 
 
@@ -341,7 +358,7 @@ class aggregateFutures:
         print('__init__')
         block = []
         for line in textList:
-            if line.strip('\n') == '' or '---' in line:
+            if (not line) or (line.strip('\n') == '') or (self.isGarbageLine(line)):
                 continue
             else:
                 block.append(line.strip())
@@ -426,17 +443,18 @@ class aggregateFutures:
         #self.cleanDBFTables(self.__myDBFPath)
         GenTxt = False
         for line in txt:
-            for key in self.keyWords:
-                if key in line:
-                    if txtcup:
-                        if tempkey in self.operator:
-                            self.operator.get(tempkey)(self, txtcup)
-                        txtcup.clear()
-                    tempkey = key
-                    newBlock = True
-                    break
-
-            txtcup.append(line)
+            if line:
+                for key in self.keyWords:
+                    if key in line:
+                        if txtcup:
+                            if tempkey in self.operator:
+                                self.operator.get(tempkey)(self, txtcup)
+                            txtcup.clear()
+                        tempkey = key
+                        newBlock = True
+                        break
+                if len(line) > 0:
+                    txtcup.append(line)
 
 
         if txtcup:
