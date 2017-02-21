@@ -141,6 +141,11 @@ class account:
         return
 
     def set(self, txt = []):
+        # GSaccShema = {"PreBalance":'上次结算资金', 'DeliveryFee':'交割手续费', 'DepositWithdrawal': '出入金',
+        #     'Balancecf':'期末结存', 'RealizedPL':'平仓盈亏', 'MarginOccupied':'保证金占用', 'MTMPL':'持仓盈亏',
+        #     'FundAvail':'可用资金', 'Fee':'手续费', 'RiskDegree':'风险度'}
+        global GSaccShema
+
         self.__myName = '资金状况'
         NameToValue = {}
         for line in txt[1:]:
@@ -162,17 +167,17 @@ class account:
 
         try:
             #self.__Balance_bf = float(NameToValue['上次结算金'])
-            self.__Balance_bf = float(NameToValue['上次结算资金'])
-            self.__Delivery_Fee = float(NameToValue['交割手续费'])
+            self.__Balance_bf = float(NameToValue[GSaccShema['PreBalance']])
+            self.__Delivery_Fee = float(NameToValue[GSaccShema['DeliveryFee']])
             #self.__Deposit = float(NameToValue['出 入 金'])
-            self.__Deposit = float(NameToValue['出入金'])
-            self.__Balance_cf = float(NameToValue['期末结存'])
-            self.__Realized = float(NameToValue['平仓盈亏'])
-            self.__Margin_Occupied = float(NameToValue['保证金占用'])
-            self.__MTM = float(NameToValue['持仓盈亏'])
-            self.__Fund_Avail = float(NameToValue['可用资金'])
-            self.__Commission = float(NameToValue['手续费'])
-            self.__Risk_Degree = float(NameToValue['风险度'])
+            self.__Deposit = float(NameToValue[GSaccShema['DepositWithdrawal']])
+            self.__Balance_cf = float(NameToValue[GSaccShema['Balancecf']])
+            self.__Realized = float(NameToValue[GSaccShema['RealizedPL']])
+            self.__Margin_Occupied = float(NameToValue[GSaccShema['MarginOccupied']])
+            self.__MTM = float(NameToValue[GSaccShema['MTMPL']])
+            self.__Fund_Avail = float(NameToValue[GSaccShema['FundAvail']])
+            self.__Commission = float(NameToValue[GSaccShema['Fee']])
+            self.__Risk_Degree = float(NameToValue[GSaccShema['RiskDegree']])
             self.__Currency = 'CNY'
             self.__ChgInFund = 0.00 + self.__MTM - self.__Commission -self.__Payment
             self.__Initialed = True
@@ -186,6 +191,10 @@ class account:
             traceback.print_exc(file=sys.stdout)
         return
     def writeDbf(self, path):
+        global  GSaccShema
+        # GSaccShema = {"PreBalance":'上次结算资金', 'DeliveryFee':'交割手续费', 'DepositWithdrawal': '出入金',
+        #     'Balancecf':'期末结存', 'RealizedPL':'平仓盈亏', 'MarginOccupied':'保证金占用', 'MTMPL':'持仓盈亏',
+        #     'Fund Avail':'可用资金', 'Fee':'手续费', 'RiskDegree':'风险度'}
         temphead = {}
         temphead['结算会员号'] = str(self.__account)
         table = dbf.Table(path)
@@ -923,17 +932,20 @@ class transaction:#成交明细
         timedelta = datetime.timedelta(minutes=1)
         pivotTime = datetime.datetime.strptime(tempTime,'%H:%M:%S')
         pivotOrderid = 400000
+        #transaction
+        global GStransactionRecord
+        #GStransactionRecord = {'Instrument':'合约代码', 'Exchange':'交易所', 'Date':'成交日期', 'S/H':'投/保', 'B/S':'买/卖', 'Lots':'手数', 'Price':'成交价', 'O/C':'开平', 'Fee':'手续费', 'Trans.No.':'成交编号'}
         for oneTrade in tempTradeList:
             futureID = re.compile(u'[a-zA-Z]+');
             try:
-                tFuture = futureID.findall(oneTrade['合约'].upper())
+                tFuture = futureID.findall(oneTrade[GStransactionRecord['Instrument']].upper())
             except KeyError as e:
                 print(e)
             else:
                 if Gdebug:
                     print('++++++++++++++')
             try:
-                TradeAmount = int(oneTrade['手数']) * float(oneTrade['成交价']) * self.IDToMultiplier[tFuture[0]]
+                TradeAmount = int(oneTrade[GStransactionRecord['Lots']]) * float(oneTrade[GStransactionRecord['Price']]) * self.IDToMultiplier[tFuture[0]]
             except KeyError as e:
                 print(e)
                 print("合约不存在，请补全配置文件futuresConfig.txt")
@@ -944,7 +956,7 @@ class transaction:#成交明细
 
 
             getWord = re.compile(u'[a-zA-Z]+');
-            futureHead = getWord.findall(oneTrade['合约'])
+            futureHead = getWord.findall(oneTrade[GStransactionRecord['Instrument']])
             temp_partid = self.__FutToPartid[futureHead[0].upper()]
             temp_clientid = self.__FutToClientid[futureHead[0].upper()]
             temp_Userid = self.__customer_Userid["Userid"]
@@ -953,11 +965,11 @@ class transaction:#成交明细
             strOrderid = str(pivotOrderid)
             pivotOrderid = pivotOrderid + 1
 
-            if len(oneTrade['成交编号']) > 12:
-                oneTabTrade = (temp_partid, temp_clientid, oneTrade['合约'], oneTrade['成交编号'][-12:], oneTrade['手数'], oneTrade['成交价'], str(TradeAmount), strTime, oneTrade['买/卖'], oneTrade['开平'], strOrderid, temp_Userid)
+            if len(oneTrade[GStransactionRecord['Trans.No.']]) > 12:
+                oneTabTrade = (temp_partid, temp_clientid, oneTrade[GStransactionRecord['Instrument']], oneTrade[GStransactionRecord['Trans.No.']][-12:], oneTrade[GStransactionRecord['Lots']], oneTrade[GStransactionRecord['Price']], str(TradeAmount), strTime, oneTrade[GStransactionRecord['B/S']], oneTrade[GStransactionRecord['O/C']], strOrderid, temp_Userid)
             else:
 
-                oneTabTrade = (temp_partid, temp_clientid, oneTrade['合约'], oneTrade['成交编号'], oneTrade['手数'], oneTrade['成交价'], str(TradeAmount), strTime, oneTrade['买/卖'], oneTrade['开平'], strOrderid, temp_Userid)
+                oneTabTrade = (temp_partid, temp_clientid, oneTrade[GStransactionRecord['Instrument']], oneTrade[GStransactionRecord['Trans.No.']], oneTrade[GStransactionRecord['Lots']], oneTrade[GStransactionRecord['Price']], str(TradeAmount), strTime, oneTrade[GStransactionRecord['B/S']], oneTrade[GStransactionRecord['O/C']], strOrderid, temp_Userid)
             #table.append(oneTabTrade)
             #print(oneTabTrade)
             #print('====================')
@@ -1205,6 +1217,8 @@ class kingNew:
         self.positionsTxt.clear()
         return
     def setAccNdate(self, txt = []):
+        #GSsettlement ={'clientID': '账户', 'Date':'日期'}
+        global GSsettlement
         NameToValue = {}
         for line in txt[1:]:
 
@@ -1223,14 +1237,14 @@ class kingNew:
             for index in range(len):
                 NameToValue[res[index]] = nums[index]
 
-        if '账户' in NameToValue:
-            self.__accNum = NameToValue['账户']
+        if GSsettlement['clientID'] in NameToValue:
+            self.__accNum = NameToValue[GSsettlement['clientID']]
         elif  '客户号' in NameToValue:
-            self.__accNum = NameToValue['客户号']
+            self.__accNum = NameToValue[GSsettlement['clientID']]
         else:
             print('账户没有正确解析')
             self.__accNum = 'NULL'
-        self.__date = NameToValue['日期']
+        self.__date = NameToValue[GSsettlement['Date']]
         #结算会员:13887    结算会员名称:中信期货(0018)   结算日期:20161213
         #self.__strHeader = '结算会员: ' + self.__accNum[0:-2] + '       结算会员名称:中信期货(0018)' + '      结算日期:' + self.__date
         self.__strHeader = '结算会员: ' + self.__accNum + '       结算会员名称:中信期货(0018)' + '      结算日期:' + self.__date

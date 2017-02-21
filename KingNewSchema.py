@@ -17,7 +17,7 @@
 settlement ={'clientID': '账户', 'Date':'日期'}
 accShema = {"PreBalance":'上次结算资金', 'DeliveryFee':'交割手续费', 'DepositWithdrawal': '出入金',
             'Balancecf':'期末结存', 'RealizedPL':'平仓盈亏', 'MarginOccupied':'保证金占用', 'MTMPL':'持仓盈亏',
-            'Fund Avail':'可用资金', 'Fee':'手续费', 'RiskDegree':'风险度'}
+            'FundAvail':'可用资金', 'Fee':'手续费', 'RiskDegree':'风险度'}
 # --------------------------------------------------------成交明细-------------------------------------------------------
 #
 # |      合约代码   |    交易所 | 成交日期| 买/卖| 投/保|       成交价|  手数 |  开平 |      手续费   |      成交编号   |
@@ -42,7 +42,7 @@ GSpositions = {'Instrument':'合约代码', 'B/S':'买/卖', 'Lots':'手数', 'A
 GSsettlement ={'clientID': '账户', 'Date':'日期'}
 GSaccShema = {"PreBalance":'上次结算资金', 'DeliveryFee':'交割手续费', 'DepositWithdrawal': '出入金',
             'Balancecf':'期末结存', 'RealizedPL':'平仓盈亏', 'MarginOccupied':'保证金占用', 'MTMPL':'持仓盈亏',
-            'Fund Avail':'可用资金', 'Fee':'手续费', 'RiskDegree':'风险度'}
+            'FundAvail':'可用资金', 'Fee':'手续费', 'RiskDegree':'风险度'}
 #
 # def main():
 #
