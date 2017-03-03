@@ -51,30 +51,6 @@ def cleanDBFTables(path):
                 print(record)
         table.close()
 
-    # for file in files:
-    #     file = path + '/' + file
-    #     if os.path.isdir(file):
-    #         continue
-    #     else:
-    #         #srcFile = open(file, 'r')
-    #         table = dbf.Table(file)
-    #         table.open()
-    #         for record in table:
-    #             #record.decode("ascii").encode("utf-8")
-    #
-    #             if Gdebug:
-    #                 print('-'*200)
-    #                 print(record)
-    #                 print('-'*200)
-    #             dbf.delete(record)
-    #
-    #         table.pack()
-    #         if Gdebug:
-    #             print('+'*200)
-    #         for record in table:
-    #             if Gdebug:
-    #                 print(record)
-    #         table.close()
 
 
 

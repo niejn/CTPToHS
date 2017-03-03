@@ -10,12 +10,50 @@ import pandas as pd
 #import numpy as np
 #import matplotlib.pyplot as plt
 
+import logging
+import logging.handlers
+import logging.config
+
 
 Gdebug = False
 
 #keyWords = ['结算单', '资金状况', '持仓明细', '持仓汇总', '成交明细', '平仓明细', '出入金明细', '中信期货']
 pBillKeys = {'交易结算单(盯市)', '资金状况', '成交记录', '平仓明细', '持仓明细', '持仓汇总'}
 pBillDicts = {"SettlementStatement" : "交易结算单(盯市)", "AccountSummary" : "资金状况", "TransactionRecord" : "成交记录", "PositionClosed" : "平仓明细", "PositionsDetail" : "持仓明细", "Positions" : "持仓汇总"}
+
+#----------------------------------------------------------------------
+logging.config.fileConfig('logging.conf')
+root_logger = logging.getLogger('root')
+root_logger.info('root logger')
+logger = logging.getLogger('main')
+#logger = logging.getLogger('billRead')
+logger.info('test main logger')
+#logging.ERROR
+bill_logger = logging.getLogger('bill')
+bill_logger.error("This is warning message")
+    # except:
+    #     logger.exception("Exception Logged")
+# def initialLogger():
+#     logging.basicConfig(level=logging.DEBUG,
+#                 format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+#                 datefmt='%a, %d %b %Y %H:%M:%S',
+#                 filename='myapp.log',
+#                 filemode='w')
+#
+#     #################################################################################################
+#     #定义一个StreamHandler，将INFO级别或更高的日志信息打印到标准错误，并将其添加到当前的日志处理对象#
+#     console = logging.StreamHandler()
+#     console.setLevel(logging.INFO)
+#     formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+#     console.setFormatter(formatter)
+#     logging.getLogger('').addHandler(console)
+#     logging.debug('This is debug message')
+#     logging.info('This is info message')
+#     logging.warning('This is warning message')
+#     logging.error("This is warning message")
+#     return
+
+
 class Bill:
 
     def __init__(self, textList = []):
@@ -216,7 +254,87 @@ class ParentBill(Bill):
             ans = True
 
         return ans
+    def washPosition(self, txtlist = []):
+        print(txtlist)
+        index = 0
+        #filter the header and nonsense lines
+        while("|" not in txtlist[index]):
+            index += 1
+        schema_txt = txtlist[index]
+        phanzi = re.compile(u'[\u4e00-\u9fa5]+\/?[\u4e00-\u9fa5]+');
+        keys = phanzi.findall(schema_txt)
+        keySize = len(keys)
+        #filter the english key
+        index += 2
+        #filter the nonsense line
+        list = []
+        while(index < len(txtlist)):
 
+            if "|" not in txtlist[index]:
+                break;
+
+            # testVal = re.compile(u'[^\|]*');
+            # vals = testVal.findall(txtlist[index])
+            collectVal = re.compile(u'[\u4e00-\u9fa5]+\d+[\u4e00-\u9fa5]*|[A-Za-z]{1,2}\d{3,4}|[-+]?\d+\.?\d+|[\u4e00-\u9fa5]+|\d');
+            vals = collectVal.findall(txtlist[index])
+            if len(vals) != keySize:
+                logger.error("in washPosition of ParentBill valSize not equal to keySize")
+                logger.error(vals)
+            else:
+                # temp = {}
+                # for index in range(len(keys)):
+                #     temp[keys[index]] = vals[index]
+
+                list.append(vals)
+            index += 1
+
+            #vals = txtlist[index].split('|')
+        print(list)
+        df = pd.DataFrame(list, columns = keys)
+        print(df)
+        return df
+
+    def washTrantransaction(self,txtlist = []):
+        #print(txtlist)
+        index = 0
+        #filter the header and nonsense lines
+        while("|" not in txtlist[index]):
+            index += 1
+        schema_txt = txtlist[index]
+        phanzi = re.compile(u'[\u4e00-\u9fa5]+\/?[\u4e00-\u9fa5]+');
+        keys = phanzi.findall(schema_txt)
+        keySize = len(keys)
+        #filter the english key
+        index += 2
+        #filter the nonsense line
+        list = []
+        while(index < len(txtlist)):
+
+            if "|" not in txtlist[index]:
+                break;
+
+            # testVal = re.compile(u'[^\|]*');
+            # vals = testVal.findall(txtlist[index])
+            collectVal = re.compile(u'[\u4e00-\u9fa5]+\d+[\u4e00-\u9fa5]*|[A-Za-z]{1,2}\d{3,4}|[-+]?\d+\.?\d+|[\u4e00-\u9fa5]+|\d');
+            vals = collectVal.findall(txtlist[index])
+            if len(vals) != keySize:
+                logger.error("in washPosition of ParentBill valSize not equal to keySize")
+                logger.error(vals)
+            else:
+                # temp = {}
+                # for index in range(len(keys)):
+                #     temp[keys[index]] = vals[index]
+
+                list.append(vals)
+            index += 1
+
+            #vals = txtlist[index].split('|')
+        #print(list)
+        df = pd.DataFrame(list, columns = keys)
+        print(df)
+        return df
+
+        return
     def cleanRawTxt(self,txt):
         self.settlementTxt = []
         self.accountTxt = []
@@ -259,11 +377,15 @@ class ParentBill(Bill):
             self.operator.get(tempkey)(txtcup)
             txtcup.clear()
 
-        positionList = {}
 
+        if self.positionsTxt:
+            self.positionList = self.washPosition(self.positionsTxt)
+        if self.transactionTxt:
+            # for line in self.transactionTxt:
+            #     print(line)
+            self.transList = self.washTrantransaction(self.transactionTxt)
 
-
-        return positionList
+        return
 
 
 
