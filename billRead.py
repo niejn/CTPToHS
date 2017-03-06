@@ -4,7 +4,7 @@ import re
 import datetime
 
 from decimal import *
-from prettytable import *
+
 import dbf
 import pandas as pd
 #import numpy as np
@@ -398,6 +398,8 @@ class BillList:
         self.getBills()
         #self.txtGroup =
         return
+
+
     def getBills(self):
 
         return
@@ -432,6 +434,11 @@ class BillList:
 
         return txtDict
 class ParentBillList(BillList):
+
+    def getPBillKeys(self):
+        keys = []
+        keys = self.__BillDict.keys()
+        return keys
     def getBills(self):
         self.__BillDict = {}
         for acc in self.textList:
@@ -441,7 +448,7 @@ class ParentBillList(BillList):
 
         return
     def getAcc(self, file_name):
-        ans = NONE
+        ans = ""
         #20170216_120200888_交易结算单.txt
         #phanzi = re.compile(u'[\u4e00-\u9fa5]+');
         phanzi = re.compile(u'[0-9]+');
