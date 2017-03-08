@@ -17,9 +17,16 @@ import logging.config
 
 Gdebug = False
 
+       # 品种       |      合约      |    买持     |    买均价   |     卖持     |    卖均价    |  昨结算  |  今结算  |持仓盯市盈亏|  保证金占用   |  投/保     |   多头期权市值   |   空头期权市值    |
+       # |成交日期| 交易所 |       品种       |      合约      |买/卖|   投/保    |  成交价  | 手数 |   成交额   |       开平       |  手续费  |  平仓盈亏  |     权利金收支      |  成交序号  |
+GPaDec = ["买持", "买均价", "卖持", "卖均价", "昨结算", "今结算", "持仓盯市盈亏", "保证金占用", "多头期权市值", "空头期权市值",
+          "成交价", "手数", "成交额", "手续费", "平仓盈亏", "权利金收支"
+          ]
 #keyWords = ['结算单', '资金状况', '持仓明细', '持仓汇总', '成交明细', '平仓明细', '出入金明细', '中信期货']
 pBillKeys = {'交易结算单(盯市)', '资金状况', '成交记录', '平仓明细', '持仓明细', '持仓汇总'}
 pBillDicts = {"SettlementStatement" : "交易结算单(盯市)", "AccountSummary" : "资金状况", "TransactionRecord" : "成交记录", "PositionClosed" : "平仓明细", "PositionsDetail" : "持仓明细", "Positions" : "持仓汇总"}
+
+GParentSettlement ={'clientID': '客户号', 'Date':'日期'}
 
 #----------------------------------------------------------------------
 logging.config.fileConfig('logging.conf')
@@ -207,8 +214,8 @@ class Bill:
 class ParentBill(Bill):
 
     def setSettlementTxt(self, txt = []):
-        # for line in txt:
-        #     self.settlementTxt.append(line)
+        for line in txt:
+            self.settlementTxt.append(line)
         return
     def setAccountTxt(self, txt = []):
         #self.accountTxt.extend(txt)
@@ -255,7 +262,7 @@ class ParentBill(Bill):
 
         return ans
     def washPosition(self, txtlist = []):
-        print(txtlist)
+        #print(txtlist)
         index = 0
         #filter the header and nonsense lines
         while("|" not in txtlist[index]):
@@ -289,9 +296,9 @@ class ParentBill(Bill):
             index += 1
 
             #vals = txtlist[index].split('|')
-        print(list)
+        #(list)
         df = pd.DataFrame(list, columns = keys)
-        print(df)
+        # print(df)
         return df
 
     def washTrantransaction(self,txtlist = []):
@@ -331,8 +338,54 @@ class ParentBill(Bill):
             #vals = txtlist[index].split('|')
         #print(list)
         df = pd.DataFrame(list, columns = keys)
-        print(df)
+        #print(df)
         return df
+
+
+    def setAccNdate(self, txt = []):
+        #GParentSettlement ={'clientID': '客户号', 'Date':'日期'}
+        global GParentSettlement
+        #global GParentSettlement
+        NameToValue = {}
+        for line in txt[1:]:
+
+            str =line.split()
+            phanzi=re.compile(u'[\u4e00-\u9fa5]+');
+
+            res = phanzi.findall(line)
+            nums = re.findall(r'([a-zA-Z]*\d+)', line)
+
+
+
+            resLen = res.__len__()
+            numsLen = nums.__len__()
+            len = resLen if resLen < numsLen else numsLen
+
+            for index in range(len):
+                NameToValue[res[index]] = nums[index]
+
+        if GParentSettlement['clientID'] in NameToValue:
+            self.__accNum = NameToValue[GParentSettlement['clientID']]
+        elif  '客户号' in NameToValue:
+            self.__accNum = NameToValue[GParentSettlement['clientID']]
+        else:
+            print('账户没有正确解析')
+            self.__accNum = 'NULL'
+        self.__date = NameToValue[GParentSettlement['Date']]
+        #结算会员:13887    结算会员名称:中信期货(0018)   结算日期:20161213
+        #self.__strHeader = '结算会员: ' + self.__accNum[0:-2] + '       结算会员名称:中信期货(0018)' + '      结算日期:' + self.__date
+        self.__strHeader = '结算会员: ' + self.__accNum + '       结算会员名称:中信期货(0018)' + '      结算日期:' + self.__date
+        return
+    def toNum(self, pdata):
+        global GPaDec
+        print(pdata.dtypes)
+        pCols = pdata.columns
+        for eachCol in pCols:
+            if eachCol in GPaDec:
+                pdata[eachCol] = pdata[eachCol].astype(float)
+                # pdata[eachCol] = pdata[eachCol].astype(Decimal)
+                print(pdata[eachCol])
+        print(pdata.dtypes)
 
         return
     def cleanRawTxt(self,txt):
@@ -378,13 +431,15 @@ class ParentBill(Bill):
             txtcup.clear()
 
 
+        if self.settlementTxt:
+            self.setAccNdate(self.settlementTxt)
+
         if self.positionsTxt:
             self.positionList = self.washPosition(self.positionsTxt)
+            self.toNum(self.positionList)
         if self.transactionTxt:
-            # for line in self.transactionTxt:
-            #     print(line)
             self.transList = self.washTrantransaction(self.transactionTxt)
-
+            self.toNum(self.transList)
         return
 
 
@@ -439,6 +494,10 @@ class ParentBillList(BillList):
         keys = []
         keys = self.__BillDict.keys()
         return keys
+    def getPBill(self, key):
+
+        pBill = self.__BillDict[key]
+        return pBill
     def getBills(self):
         self.__BillDict = {}
         for acc in self.textList:

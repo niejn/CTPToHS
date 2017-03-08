@@ -30,7 +30,7 @@ KN_Keys = ['结算单', '资金状况', '持仓明细', '持仓汇总', '成交�
 KN_Dicts = {"SettlementStatement" : "结算单", "AccountSummary" : "资金状况", "TransactionRecord" : "成交明细",
             "PositionClosed" : "平仓明细", "PositionsDetail" : "持仓明细", "Positions" : "持仓汇总",
             "Delivery" : "交割明细", "Company" : '中信期货', "DepositNWithdraw" : '出入金明细'}
-
+GSsettlement ={'clientID': '账户', 'Date':'日期'}
 
 
 class childBill(Bill):
@@ -155,7 +155,7 @@ class childBill(Bill):
             #vals = txtlist[index].split('|')
         #print(list)
         df = pd.DataFrame(list, columns = keys)
-        print(df)
+        # print(df)
         return df
 
     def washTrantransaction(self,txtlist = []):
@@ -169,7 +169,7 @@ class childBill(Bill):
         keys = phanzi.findall(schema_txt)
         keySize = len(keys)
         #filter the english key
-        index += 2
+
         #filter the nonsense line
         list = []
         while(index < len(txtlist)):
@@ -195,7 +195,7 @@ class childBill(Bill):
             #vals = txtlist[index].split('|')
         #print(list)
         df = pd.DataFrame(list, columns = keys)
-        print(df)
+        # print(df)
         return df
 
         return
@@ -278,7 +278,7 @@ class childBill(Bill):
         if self.transactionTxt:
             # for line in self.transactionTxt:
             #     print(line)
-            self.transList = self.washTrantransaction(self.transactionTxt)
+            self.transList = self.washPosition(self.transactionTxt)
 
 
 

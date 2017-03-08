@@ -218,6 +218,18 @@ def getChildBillDict(path):
                 childBillDict[pKey] = childPathList
 
     return childBillDict
+
+def ironing(parentBill, childBills=[]):
+    parentPosition = parentBill.positionList
+    # for eachPostion in parentPosition:
+    #     print(eachPostion)
+    print(parentPosition.columns)
+    #df_obj['列名'].astype(int)#转换某列的数据类型
+    # parentPosition[]
+    for col in parentPosition:
+        print(parentPosition[col])
+
+    return
 def main():
 
     path = './txt'
@@ -232,20 +244,22 @@ def main():
     #childBillDict = getChildBillDict(subAccPath)
     for eachpbill in pBillKeys:
         if eachpbill in childBillDict:
+            parentBill = pBills.getPBill(eachpbill)
             childBillPath = childBillDict[eachpbill]
             childBills = getChildBill(childBillPath)
+            childBills = ironing(parentBill, childBills)
 
 
 
-    textContainer = readBill_All(subAccPath)
-
-    #aggregateFutures tempAgg();
-    posAeg = aggregate(textContainer)
-
-    for text in textContainer:
-        tempKN = kingNew(text, posAeg)
-        tempKN.clear();
-        del tempKN
+    # textContainer = readBill_All(subAccPath)
+    #
+    # #aggregateFutures tempAgg();
+    # posAeg = aggregate(textContainer)
+    #
+    # for text in textContainer:
+    #     tempKN = kingNew(text, posAeg)
+    #     tempKN.clear();
+    #     del tempKN
 
 
 
