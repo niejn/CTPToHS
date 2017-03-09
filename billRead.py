@@ -384,8 +384,8 @@ class ParentBill(Bill):
             if eachCol in GPaDec:
                 pdata[eachCol] = pdata[eachCol].astype(float)
                 # pdata[eachCol] = pdata[eachCol].astype(Decimal)
-                print(pdata[eachCol])
-        print(pdata.dtypes)
+                #print(pdata[eachCol])
+        #print(pdata.dtypes)
 
         return
     def cleanRawTxt(self,txt):

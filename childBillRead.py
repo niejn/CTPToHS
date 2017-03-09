@@ -21,6 +21,14 @@ child_logger = logging.getLogger('bill')
 #logger = logging.getLogger('billRead')
 child_logger.info('test child bill logger')
 
+
+# 手数 |    开仓价   |    结算价   |   持仓盈亏  |    保证金
+#  手数 |    开仓价   |    结算价   |   持仓盈亏  |    保证金
+# 手数 |       开仓均价  |        结算价   |     持仓盯市盈亏|    保证金占用
+# 成交价|  手数 |  开平 |      手续费   |      成交编号
+# 开仓价|       平仓价|  手数 |  开平 |   平仓盈亏  | 投/保|     成交编号
+GChildDec = ["手数", "开仓价", "结算价", "持仓盈亏", "保证金", "开仓均价", "持仓盯市盈亏", "保证金占用",
+             "成交价", "手续费", "平仓价", "平仓盈亏"]
 # keyWords = ['结算单', '资金状况', '持仓明细', '持仓汇总', '成交明细', '平仓明细', '出入金明细', '中信期货']
 #KN_Keys = ['结算单', '资金状况', '持仓明细', '持仓汇总', '成交明细', '平仓明细', '出入金明细', '中信期货']
     # operator = {'结算单':setSettlementTxt, '资金状况':setAccountTxt, '持仓明细':setPositionsDetailTxt,
@@ -217,6 +225,18 @@ class childBill(Bill):
             for index in range(len):
                 NameToValue[res[index]] = nums[index]
         return NameToValue
+    def toNum(self, pdata):
+        global GChildDec
+        print(pdata.dtypes)
+        pCols = pdata.columns
+        for eachCol in pCols:
+            if eachCol in GChildDec:
+                pdata[eachCol] = pdata[eachCol].astype(float)
+                # pdata[eachCol] = pdata[eachCol].astype(Decimal)
+                #print(pdata[eachCol])
+        #print(pdata.dtypes)
+
+        return
     def cleanRawTxt(self,txt):
         self.settlementTxt = []
         self.accountTxt = []
@@ -267,58 +287,24 @@ class childBill(Bill):
             self.accountDict = self.washAccount(self.accountTxt)
         if self.positionsDetailTxt:
             self.positionsDetailList = self.washPosition(self.positionsDetailTxt)
-        # if self.transactionTxt:
-        #     self.washPosition(self.transactionTxt)
+            self.toNum(self.positionsDetailList)
         if self.deliveryTxt:
             self.deliveryList = self.washPosition(self.deliveryTxt)
+            self.toNum(self.deliveryList)
         if self.depositTxt:
             self.depositList = self.washPosition(self.depositTxt)
+            self.toNum(self.depositList)
         if self.positionsTxt:
             self.positionList = self.washPosition(self.positionsTxt)
+            self.toNum(self.positionList)
         if self.transactionTxt:
-            # for line in self.transactionTxt:
-            #     print(line)
             self.transList = self.washPosition(self.transactionTxt)
+            self.toNum(self.transList)
 
 
 
 
-        # if txtcup:
-        #     self.operator.get(tempkey)(self, txtcup)
-        #     txtcup.clear()
-        # if self.settlementTxt:
-        #     self.setAccNdate(self.settlementTxt)
-        # if self.accountTxt:
-        #     self.__myAcc.set(self.accountTxt)
-        #     self.__myAcc.setAccNdate(self.__accNum, self.__date)
-        #
-        # if self.positionsDetailTxt:
-        #     self.__myPositionsDetail.set(self.positionsDetailTxt)
-        #
-        # tempFeeSet = {}
-        # #将每条交易的交易费用加起来
-        # if self.transactionTxt:
-        #     self.__myTransaction.set(self.transactionTxt)
-        #     tempFeeSet = self.__myTransaction.computeSetDet()
-        #     self.__myTransaction.setAccNdate(self.__accNum, self.__date)
-        #
-        # #需要将交易费用加上
-        # if self.positionsTxt:
-        #     self.__myPositions.set(self.positionsTxt)
-        #     self.__myPositions.setAccNdate(self.__accNum, self.__date)
-        #
-        #     self.__myPositions.addFeeSet(tempFeeSet)
-        # elif self.transactionTxt and tempFeeSet:
-        #     self.__myPositions.setAccNdate(self.__accNum, self.__date)
-        #     self.__myPositions.addFeeSet(tempFeeSet)
-        #     print("")
-        # else:
-        #     print('')
-        # #正常情况下，不会执行，因为金牛导出账单没有这一项
-        # if self.depositTxt:
-        #
-        #     self.__myClientCapitalDetail.setAccNdate(self.__accNum, self.__date)
-        #     self.__myClientCapitalDetail.set(self.depositTxt)
+
         return
 
 

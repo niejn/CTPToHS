@@ -223,11 +223,20 @@ def ironing(parentBill, childBills=[]):
     parentPosition = parentBill.positionList
     # for eachPostion in parentPosition:
     #     print(eachPostion)
-    print(parentPosition.columns)
+    #print(parentPosition.columns)
+    #df['h-index'] = df.groupby('author')['citations'].transform(lambda x: ( x >= x.rank(ascending=False, method='first') ).sum() )
+    #df['h-index'] = df.groupby('author')['citations'].transform(lambda x: ( x >= x.rank(ascending=False, method='first') ).sum() ) ​
+    # for index, row in df.iterrows():
+    # for index, row in df.iterrows():
+    # if row[0]==current_author:
+    #     if row[1]>hindex:
+    #         hindex+=1
     #df_obj['列名'].astype(int)#转换某列的数据类型
     # parentPosition[]
-    for col in parentPosition:
-        print(parentPosition[col])
+    # for each_index in parentPosition.index:
+    # print(parentPosition.irow(0)  )
+    # .iloc[i]
+    print(parentPosition.iloc[0])
 
     return
 def main():
