@@ -113,77 +113,7 @@ def processBill(text):
 
     return
 
-# def aggregate(textContainer = []):
-#     global positions
-#     allPositions = []
-#     for text in textContainer:
-#         tempAgg = aggregateFutures(text)
-#         tPostions = tempAgg.getPositions()
-#         allPositions.append(tPostions)
-#
-#     parse = '__________________________________________________________________________'
-#
-#     setDet = {}
-#
-#     for eachPosition in allPositions:
-#         print(parse)
-#         for node in eachPosition:
-#             #print(node)
-#             if node[positions['Instrument']] not in setDet:
-#                 tempAgNode = {}
-#                 tempAgNode['卖'] = 0
-#                 tempAgNode['买'] = 0
-#                 tempAgNode['卖成交价'] = 0
-#                 tempAgNode['买成交价'] = 0
-#                 tempAgNode['持仓盯市盈亏'] = 0
-#                 tempAgNode['卖保证金占用'] = 0
-#                 tempAgNode['买保证金占用'] = 0
-#                 if '买' in node[positions['B/S']]:
-#                     tempAgNode['买'] = int(node[positions['Lots']])
-#                     tempAgNode['买成交价'] = Decimal(node[positions['AvgOpenPrice']])
-#                     tempAgNode['买保证金占用'] = Decimal(node[positions['MarginOccupied']])
-#                 else:
-#                     tempAgNode['卖'] = int(node[positions['Lots']])
-#                     tempAgNode['卖成交价'] = Decimal(node[positions['AvgOpenPrice']])
-#                     tempAgNode['卖保证金占用'] = Decimal(node[positions['MarginOccupied']])
-#
-#                 #tempAgNode['手续费'] = Decimal(node['手续费'])
-#                 tempAgNode['合约'] = node[positions['Instrument']]
-#                 #tempAgNode['投/保'] = node['投/保']
-#                 tempAgNode['持仓盯市盈亏'] = Decimal(node[positions['MTMP/L']])
-#                 setDet[node[positions['Instrument']]] = tempAgNode
-#             else:
-#                 tempAgNode = setDet[node[positions['Instrument']]]
-#                 #print(tempSDNode)
-#                 if '买' in node[positions['B/S']]:
-#                     oldBuyAvg = tempAgNode['买成交价']
-#                     oldBuySum = tempAgNode['买']
-#                     nodeBuyAvg = Decimal(node[positions['AvgOpenPrice']])
-#                     nodeBuySum = int(node[positions['Lots']])
-#                     newBuyAvg = oldBuyAvg * oldBuySum + nodeBuyAvg * nodeBuySum
-#                     newBuyAvg = newBuyAvg / (oldBuySum + nodeBuySum)
-#                     tempAgNode['买成交价'] = newBuyAvg
-#                     tempAgNode['买'] += int(node[positions['Lots']])
-#                     tempAgNode['买保证金占用'] += Decimal(node[positions['MarginOccupied']])
-#                 else:
-#                     oldSellAvg = tempAgNode['卖成交价']
-#                     oldSellSum = tempAgNode['卖']
-#                     nodeSellAvg = Decimal(node[positions['AvgOpenPrice']])
-#                     nodeSellSum = int(node[positions['Lots']])
-#                     newSellAvg = oldSellAvg * oldSellSum + nodeSellAvg * nodeSellSum
-#                     newSellAvg = newSellAvg / (oldSellSum + nodeSellSum)
-#                     tempAgNode['卖保证金占用'] += Decimal(node[positions['MarginOccupied']])
-#                     tempAgNode['卖成交价'] = newSellAvg
-#                     tempAgNode['卖'] += int(node[positions['Lots']])
-#                 tempAgNode['持仓盯市盈亏'] += Decimal(node[positions['MTMP/L']])
-#     #aggregate all positons
-#     for futureID in setDet:
-#         tempAgNode = setDet[futureID]
-#         if tempAgNode['买保证金占用'] >= tempAgNode['卖保证金占用']:
-#             tempAgNode['单边最大方向'] = '买'
-#         else:
-#             tempAgNode['单边最大方向'] = '卖'
-#     return setDet
+
 
 #read all childBills referencing the same parent
 def getChildBill(childBillPath):
@@ -237,8 +167,134 @@ def ironing(parentBill, childBills=[]):
     # print(parentPosition.irow(0)  )
     # .iloc[i]
     print(parentPosition.iloc[0])
+    print(parentPosition['买持'])
+     # 买持     |    买均价   |     卖持
+    # list(filter(lambda x:True if x % 3 == 0 else False, range(100)))
+    # print df[(df['sex'] == 'Female') & (df['total_bill'] > 20)]
+    # parentPosition['较大单边方向'] = parentPosition["买持", '卖持'].transform(lambda buy, sell: True if buy > sell else False )
+    df = parentPosition
+    # print(df[(df['买持'] > df['卖持'])])
+    mask = (parentPosition['买持'] > parentPosition['卖持'])
+    parentPosition["较大单边"] = mask
+    print(parentPosition["较大单边"])
+    print(mask)
 
-    return
+
+
+    # for index, row in parentPosition.iterrows():
+    #     print(index)
+    #     print(row)
+    #     print(row['合约'])
+    # hasattr(object, name)
+    for each_child in childBills:
+        if hasattr(each_child, 'positionList'):
+            child_position = each_child.positionList
+        else:
+            continue
+        print(child_position)
+        cmask = (child_position['买/卖'] == '买')
+        child_position['持仓方向'] = cmask
+        print(child_position)
+        for index, row in child_position.iterrows():
+            filter = (parentPosition['合约'] == row["合约代码"])
+            #make sure that only one row is returned
+            # data.irow(0)
+            parent_row = parentPosition[filter].irow(0)
+            # if len(parent_row) != 1:
+            #     # raise Exception("Invalid level!", level)
+            #     raise Exception("More than 1 parent bill row!", len(parent_row))
+            # print(len(parent_row))
+
+
+            # if (parent_row["较大单边"]):
+            #     if '买'in row['买/卖']:
+            print(row)
+            print(parent_row)
+            rowDir = row['持仓方向']
+            parDir = parent_row["较大单边"]
+            if row['持仓方向'] == parent_row["较大单边"]:
+                EPSINON = 0.000001
+                if row['保证金占用'] - parent_row["保证金占用"] <= EPSINON:
+                    continue
+                cPos = row['手数']
+                if parent_row["较大单边"]:
+                    pPos = parent_row["买持"];
+                else:
+                    pPos = parent_row["卖持"];
+                if cPos <= pPos:
+
+                    print(row['保证金占用'])
+                    print(parent_row["保证金占用"])
+                    # row['保证金占用'] = parent_row["保证金占用"] * cPos * 1.0 / pPos
+                    c_margin = parent_row["保证金占用"] * cPos * 1.0 / pPos
+                    each_child.positionList.set_value(index, '保证金占用', c_margin)
+                    print(each_child.positionList)
+                    # parent_row["保证金占用"] -= row['保证金占用']
+                    # pPos -= cPos
+                    # print(row['保证金占用'])
+                    # print(parent_row["保证金占用"])
+                    # if parent_row["较大单边"]:
+                    #     parent_row["买持"] =  pPos;
+                    # else:
+                    #     parent_row["卖持"] = pPos ;
+                else:
+                    raise Exception("child margin occupied is more than parent margin occupied", row['合约代码'])
+            else:
+                # row['保证金占用'] = 0.0
+                child_position.set_value(index, '保证金占用', 0.0)
+                each_child.positionList.set_value(index, '保证金占用', 0.0)
+                print(child_position)
+                # df['c'][1]=4
+                # child_position['保证金占用'][index] = 0.0
+                #df.set_value('C', 'x', 10)
+                # each_child.positionList.set_value('保证金占用', index, 0.0)
+
+
+    return childBills
+def feeReplace(parentBill, childBills=[]):
+    if not hasattr(parentBill, 'transList'):
+        return childBills
+    paTrans = parentBill.transList
+    print(paTrans)
+    for each_child in childBills:
+        if hasattr(each_child, 'transList'):
+            child_trans = each_child.transList
+        else:
+            continue
+        # cmask = (if child_trans['交易所'] == '郑商所': child_trans['成交编号'] = child_trans['成交编号'][4:])
+        # child_trans['id'] = child_trans['交易所']transform(lambda )
+        # np.where(df.Retention_x == None, df.Retention_y, else df.Retention_x)
+        # dfCurrentReportResults['Retention'] =  dfCurrentReportResults.apply(lambda x : x.Retention_y if x.Retention_x == None else x.Retention_x, axis=1)
+        child_trans['id'] = child_trans.apply(lambda x : x.成交编号[4:] if x.交易所 == '郑商所' else x.成交编号, axis=1)
+        # child_trans['id'] = child_trans.where(child_trans.交易所 == '郑商所', child_trans['成交编号'][4:], child_trans['成交编号'])
+
+        print(child_trans)
+        for index, row in child_trans.iterrows():
+            cFieldLen = len(row["id"])
+            tRowKey = row["id"]
+            if cFieldLen < 8:
+                tRowKey = tRowKey.zfill(8)
+            filter = (paTrans['成交序号'] == tRowKey)
+            try:
+                parent_row = paTrans[filter].iloc[0]
+            except IndexError as e:
+                print(paTrans['成交序号'])
+                print(row["id"])
+                traceback.print_exc(file=sys.stdout)
+            except Exception as e:
+                print(paTrans['成交序号'])
+                print(row["id"])
+                traceback.print_exc(file=sys.stdout)
+            print(parent_row)
+            print(row)
+            EPSINON = 0.000001
+            if row['手续费'] - parent_row["手续费"] <= EPSINON:
+                continue
+            tfee = parent_row["手续费"]
+            each_child.transList.set_value(index, '手续费', tfee)
+            print(each_child.transList)
+
+    return childBills
 def main():
 
     path = './txt'
@@ -251,24 +307,19 @@ def main():
     pBills = ParentBillList(parentAccPath)
     pBillKeys = pBills.getPBillKeys()
     #childBillDict = getChildBillDict(subAccPath)
+
+    #split the parent bill margin occupied field to fill the child bill margin occupied field
     for eachpbill in pBillKeys:
         if eachpbill in childBillDict:
             parentBill = pBills.getPBill(eachpbill)
             childBillPath = childBillDict[eachpbill]
             childBills = getChildBill(childBillPath)
+            #modify the child bills according to the parent bill
             childBills = ironing(parentBill, childBills)
+            feeReplace(parentBill, childBills)
 
 
 
-    # textContainer = readBill_All(subAccPath)
-    #
-    # #aggregateFutures tempAgg();
-    # posAeg = aggregate(textContainer)
-    #
-    # for text in textContainer:
-    #     tempKN = kingNew(text, posAeg)
-    #     tempKN.clear();
-    #     del tempKN
 
 
 
