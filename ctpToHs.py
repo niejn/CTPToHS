@@ -255,7 +255,7 @@ def feeReplace(parentBill, childBills=[]):
     if not hasattr(parentBill, 'transList'):
         return childBills
     paTrans = parentBill.transList
-    print(paTrans)
+    # print(paTrans)
     for each_child in childBills:
         if hasattr(each_child, 'transList'):
             child_trans = each_child.transList
@@ -268,7 +268,7 @@ def feeReplace(parentBill, childBills=[]):
         child_trans['id'] = child_trans.apply(lambda x : x.成交编号[4:] if x.交易所 == '郑商所' else x.成交编号, axis=1)
         # child_trans['id'] = child_trans.where(child_trans.交易所 == '郑商所', child_trans['成交编号'][4:], child_trans['成交编号'])
 
-        print(child_trans)
+        # print(child_trans)
         for index, row in child_trans.iterrows():
             cFieldLen = len(row["id"])
             tRowKey = row["id"]
@@ -285,14 +285,19 @@ def feeReplace(parentBill, childBills=[]):
                 print(paTrans['成交序号'])
                 print(row["id"])
                 traceback.print_exc(file=sys.stdout)
-            print(parent_row)
-            print(row)
+            # print(parent_row)
+            # print(row)
             EPSINON = 0.000001
             if row['手续费'] - parent_row["手续费"] <= EPSINON:
                 continue
             tfee = parent_row["手续费"]
             each_child.transList.set_value(index, '手续费', tfee)
-            print(each_child.transList)
+            parse = "--------------------------------------"
+            print(parse)
+            print(tfee)
+            print(row['成交编号'])
+            print(parse)
+            # print(each_child.transList)
 
     return childBills
 def main():
@@ -315,9 +320,13 @@ def main():
             childBillPath = childBillDict[eachpbill]
             childBills = getChildBill(childBillPath)
             #modify the child bills according to the parent bill
-            childBills = ironing(parentBill, childBills)
+            # childBills =
+            ironing(parentBill, childBills)
             feeReplace(parentBill, childBills)
 
+            for each_child in childBills:
+                print(each_child.transList)
+                print(each_child.positionList)
 
 
 
