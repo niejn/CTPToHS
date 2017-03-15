@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
 import re
-import datetime
-
-from decimal import *
-from KingNewSchema import GSaccShema
-import dbf
+# import datetime
+#
+# from decimal import *
+# from KingNewSchema import GSaccShema
+# import dbf
 import pandas as pd
 #import numpy as np
 #import matplotlib.pyplot as plt
@@ -343,10 +343,27 @@ class ParentBill(Bill):
             if "|" not in txtlist[index]:
                 break;
 
+
+
             # testVal = re.compile(u'[^\|]*');
             # vals = testVal.findall(txtlist[index])
-            collectVal = re.compile(u'[\u4e00-\u9fa5]+\d+[\u4e00-\u9fa5]*|[A-Za-z]{1,2}\d{3,4}|[-+]?\d+\.?\d+|[\u4e00-\u9fa5]+|\d');
-            vals = collectVal.findall(txtlist[index])
+
+            singleRow = txtlist[index]
+            vals = self.splitToData(singleRow)
+            if not vals:
+                break
+            # vals = singleRow.split('|')
+            # vals = vals[1:-1]
+            # cleanVals = []
+            # for eachVal in vals:
+            #     cleanVals.append(eachVal.strip())
+            # vals = cleanVals
+                # print(eachVal.strip())
+            # collectVal = re.compile(u'\d*[\u4e00-\u9fa5]+\d+[\u4e00-\u9fa5]*|[A-Za-z]{1,2}\d{3,4}|[-+]?\d+\.?\d+|[\u4e00-\u9fa5]+|\d');
+            # vals = collectVal.findall(txtlist[index])
+            # vals = cleanVals
+            if '共' in vals[0]:
+                break
             if len(vals) != keySize:
                 logger.error("in washPosition of ParentBill valSize not equal to keySize")
                 logger.error(vals)
@@ -363,7 +380,18 @@ class ParentBill(Bill):
         df = pd.DataFrame(list, columns = keys)
         # print(df)
         return df
-
+    def splitToData(self, row):
+        res = []
+        vals = row.split('|')
+        vals = vals[1:-1]
+        cleanVals = []
+        for eachVal in vals:
+            cleanVals.append(eachVal.strip())
+        # vals = cleanVals
+        if '共' in vals[0]:
+            return res
+        res = cleanVals
+        return res
     def washTrantransaction(self,txtlist = []):
         #print(txtlist)
         index = 0
@@ -385,11 +413,25 @@ class ParentBill(Bill):
 
             # testVal = re.compile(u'[^\|]*');
             # vals = testVal.findall(txtlist[index])
-            collectVal = re.compile(u'[\u4e00-\u9fa5]+\d+[\u4e00-\u9fa5]*|[A-Za-z]{1,2}\d{3,4}|[-+]?\d+\.?\d+|[\u4e00-\u9fa5]+|\d');
-            vals = collectVal.findall(txtlist[index])
+            singleRow = txtlist[index]
+            vals = self.splitToData(singleRow)
+            if not vals:
+                break
+            # singleRow = txtlist[index]
+            # vals = singleRow.split('|')
+            # vals = vals[1:-1]
+            # cleanVals = []
+            # for eachVal in vals:
+            #     cleanVals.append(eachVal.strip())
+            # vals = cleanVals
+            # collectVal = re.compile(u'[\u4e00-\u9fa5]+\d+[\u4e00-\u9fa5]*|[A-Za-z]{1,2}\d{3,4}|[-+]?\d+\.?\d+|[\u4e00-\u9fa5]+|\d');
+            # vals = collectVal.findall(txtlist[index])
+            if '共' in vals[0]:
+                break
             if len(vals) != keySize:
                 logger.error("in washPosition of ParentBill valSize not equal to keySize")
                 logger.error(vals)
+
             else:
                 # temp = {}
                 # for index in range(len(keys)):
@@ -445,7 +487,11 @@ class ParentBill(Bill):
         pCols = pdata.columns
         for eachCol in pCols:
             if eachCol in GPaDec:
-                pdata[eachCol] = pdata[eachCol].astype(float)
+                try:
+                    pdata[eachCol] = pdata[eachCol].astype(float)
+                except Exception as e:
+                    print(pdata[eachCol])
+                    print(pdata[eachCol].dtype)
                 # pdata[eachCol] = pdata[eachCol].astype(Decimal)
                 #print(pdata[eachCol])
         #print(pdata.dtypes)

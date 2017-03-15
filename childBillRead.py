@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-import re
+# import re
 import datetime
 import traceback
 from decimal import *
@@ -124,6 +124,18 @@ class childBill(Bill):
         #self.__strHeader = '结算会员: ' + self.__accNum[0:-2] + '       结算会员名称:中信期货(0018)' + '      结算日期:' + self.__date
         self.__strHeader = '结算会员: ' + self.__accNum + '       结算会员名称:中信期货(0018)' + '      结算日期:' + self.__date
         return
+    def splitToData(self, row):
+        res = []
+        vals = row.split('|')
+        vals = vals[1:-1]
+        cleanVals = []
+        for eachVal in vals:
+            cleanVals.append(eachVal.strip())
+        # vals = cleanVals
+        if '共' in vals[0]:
+            return res
+        res = cleanVals
+        return res
     def washPosition(self, txtlist = []):
         #print(txtlist)
         index = 0
@@ -140,6 +152,7 @@ class childBill(Bill):
         # index += 2
         #filter the nonsense line
         list = []
+        index += 1
         while(index < len(txtlist)):
 
             if "|" not in txtlist[index]:
@@ -147,8 +160,23 @@ class childBill(Bill):
 
             # testVal = re.compile(u'[^\|]*');
             # vals = testVal.findall(txtlist[index])
-            collectVal = re.compile(u'[\u4e00-\u9fa5]+\d+[\u4e00-\u9fa5]*|[A-Za-z]{1,2}\d{3,4}|[-+]?\d+\.?\d+|[\u4e00-\u9fa5]+|\d');
-            vals = collectVal.findall(txtlist[index])
+
+            singleRow = txtlist[index]
+            vals = self.splitToData(singleRow)
+            if not vals:
+                break
+
+            # singleRow = txtlist[index]
+            # vals = singleRow.split('|')
+            # vals = vals[1:-1]
+            # cleanVals = []
+            # for eachVal in vals:
+            #     cleanVals.append(eachVal.strip())
+            # vals = cleanVals
+            # if '共' in vals[0]:
+            #     break
+            # collectVal = re.compile(u'[\u4e00-\u9fa5]+\d+[\u4e00-\u9fa5]*|[A-Za-z]{1,2}\d{3,4}|[-+]?\d+\.?\d+|[\u4e00-\u9fa5]+|\d');
+            # vals = collectVal.findall(txtlist[index])
             if len(vals) != keySize:
                 child_logger.error("in washPosition of ParentBill valSize not equal to keySize")
                 child_logger.error(vals)
@@ -166,47 +194,51 @@ class childBill(Bill):
         # print(df)
         return df
 
-    def washTrantransaction(self,txtlist = []):
-        #print(txtlist)
-        index = 0
-        #filter the header and nonsense lines
-        while("|" not in txtlist[index]):
-            index += 1
-        schema_txt = txtlist[index]
-        phanzi = re.compile(u'[\u4e00-\u9fa5]+\/?[\u4e00-\u9fa5]+');
-        keys = phanzi.findall(schema_txt)
-        keySize = len(keys)
-        #filter the english key
+    # def washTrantransaction(self,txtlist = []):
+    #     #print(txtlist)
+    #     index = 0
+    #     #filter the header and nonsense lines
+    #     while("|" not in txtlist[index]):
+    #         index += 1
+    #     schema_txt = txtlist[index]
+    #     phanzi = re.compile(u'[\u4e00-\u9fa5]+\/?[\u4e00-\u9fa5]+');
+    #     keys = phanzi.findall(schema_txt)
+    #     keySize = len(keys)
+    #     #filter the english key
+    #
+    #     #filter the nonsense line
+    #     list = []
+    #     while(index < len(txtlist)):
+    #
+    #         if "|" not in txtlist[index]:
+    #             break;
+    #
+    #         # testVal = re.compile(u'[^\|]*');
+    #         # vals = testVal.findall(txtlist[index])
+    #         singleRow = txtlist[index]
+    #         vals = self.splitToData(singleRow)
+    #         if not vals:
+    #             break
+    #         # collectVal = re.compile(u'[\u4e00-\u9fa5]+\d+[\u4e00-\u9fa5]*|[A-Za-z]{1,2}\d{3,4}|[-+]?\d+\.?\d+|[\u4e00-\u9fa5]+|\d');
+    #         # vals = collectVal.findall(txtlist[index])
+    #         if len(vals) != keySize:
+    #             child_logger.error("in washPosition of ParentBill valSize not equal to keySize")
+    #             child_logger.error(vals)
+    #         else:
+    #             # temp = {}
+    #             # for index in range(len(keys)):
+    #             #     temp[keys[index]] = vals[index]
+    #
+    #             list.append(vals)
+    #         index += 1
+    #
+    #         #vals = txtlist[index].split('|')
+    #     #print(list)
+    #     df = pd.DataFrame(list, columns = keys)
+    #     # print(df)
+    #     return df
 
-        #filter the nonsense line
-        list = []
-        while(index < len(txtlist)):
 
-            if "|" not in txtlist[index]:
-                break;
-
-            # testVal = re.compile(u'[^\|]*');
-            # vals = testVal.findall(txtlist[index])
-            collectVal = re.compile(u'[\u4e00-\u9fa5]+\d+[\u4e00-\u9fa5]*|[A-Za-z]{1,2}\d{3,4}|[-+]?\d+\.?\d+|[\u4e00-\u9fa5]+|\d');
-            vals = collectVal.findall(txtlist[index])
-            if len(vals) != keySize:
-                child_logger.error("in washPosition of ParentBill valSize not equal to keySize")
-                child_logger.error(vals)
-            else:
-                # temp = {}
-                # for index in range(len(keys)):
-                #     temp[keys[index]] = vals[index]
-
-                list.append(vals)
-            index += 1
-
-            #vals = txtlist[index].split('|')
-        #print(list)
-        df = pd.DataFrame(list, columns = keys)
-        # print(df)
-        return df
-
-        return
     def washAccount(self, txt = []):
 
         NameToValue = {}
@@ -231,7 +263,11 @@ class childBill(Bill):
         pCols = pdata.columns
         for eachCol in pCols:
             if eachCol in GChildDec:
-                pdata[eachCol] = pdata[eachCol].astype(float)
+                try:
+                    pdata[eachCol] = pdata[eachCol].astype(float)
+                except Exception as e:
+                    print(pdata[eachCol])
+
                 # pdata[eachCol] = pdata[eachCol].astype(Decimal)
                 #print(pdata[eachCol])
         #print(pdata.dtypes)
