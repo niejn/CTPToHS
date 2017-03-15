@@ -155,7 +155,7 @@ class account:
             self.__Commission = float(NameToValue[GSaccShema['Fee']])
             self.__Risk_Degree = float(NameToValue[GSaccShema['RiskDegree']])
             self.__Currency = 'CNY'
-            self.__ChgInFund = 0.00 + self.__MTM - self.__Commission -self.__Payment
+            self.__ChgInFund = 0.00 + self.__MTM - self.__Commission - self.__Payment
             self.__Initialed = True
 
         except KeyError as e:
@@ -523,8 +523,11 @@ class positions:#持仓汇总
         templist = self.__myList.copy()
         processedRec = {} #to record processed settlement
         global GSpositions
-        print(GSpositions)
+        # print(GSpositions)
         #positions = {'Instrument':'合约代码', 'B/S':'买/卖', 'Lots':'手数', 'AvgOpenPrice':'开仓均价', 'SttlToday':'结算价', 'MTMP/L':'持仓盯市盈亏', 'MarginOccupied':'保证金占用', 'S/H':'投/保'}
+        # tposList = self
+
+
         for onePos in templist:
             #print(positions['Instrument'])
             testing = GSpositions['Instrument']

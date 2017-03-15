@@ -4,7 +4,7 @@ import re
 import datetime
 
 from decimal import *
-
+from KingNewSchema import GSaccShema
 import dbf
 import pandas as pd
 #import numpy as np
@@ -13,6 +13,7 @@ import pandas as pd
 import logging
 import logging.handlers
 import logging.config
+
 
 
 Gdebug = False
@@ -134,7 +135,69 @@ class Bill:
     # operator = {'结算单':setSettlementTxt, '资金状况':setAccountTxt, '持仓明细':setPositionsDetailTxt,
     #             '持仓汇总':setPositionsTxt, '成交明细':setTransactionTxt, '平仓明细':setRealizeTxt, '交割明细':setDeliveryTxt,
     #             '中信期货':setCompTxt, '出入金明细':setDepositNWithdraw}
+    def writeDeliveryDbf(self, path):
 
+        return
+    def writeDepositDbf(self, path):
+        return
+    def writePosDbf(self, path):
+        return
+    def writeTransDbf(self, path):
+
+        return
+    def writeAccDbf(self, path):
+
+        # global  GSaccShema
+        # # GSaccShema = {"PreBalance":'上次结算资金', 'DeliveryFee':'交割手续费', 'DepositWithdrawal': '出入金',
+        # #     'Balancecf':'期末结存', 'RealizedPL':'平仓盈亏', 'MarginOccupied':'保证金占用', 'MTMPL':'持仓盈亏',
+        # #     'Fund Avail':'可用资金', 'Fee':'手续费', 'RiskDegree':'风险度'}
+        # temphead = {}
+        # temphead['结算会员号'] = str(self.__account)
+        # table = dbf.Table(path)
+        # table.open()
+        # copyTable = table.new('./output/'+ self.__account + '_' + self.__mydate + '_capital.dbf')
+        # copyTable.open()
+        #
+        #
+        # rows = []
+        # rows.append((temphead['结算会员号'], '上一交易日实有货币资金余额', str(self.__Balance_bf)))
+        # rows.append((temphead['结算会员号'],'加：当日收入资金', str(self.__Deposit)))
+        # rows.append((temphead['结算会员号'], '当日盈亏', str(self.__MTM)))
+        # rows.append((temphead['结算会员号'],'减：当日付出资金', str(self.__Payment)))
+        # rows.append((temphead['结算会员号'], '手续费', str(self.__Commission)))
+        # rows.append((temphead['结算会员号'], '其中：交易手续费', str(self.__Commission)))
+        # rows.append((temphead['结算会员号'], '结算手续费', '0.00'))
+        # rows.append((temphead['结算会员号'],'交割手续费', '0.00'))
+        # rows.append((temphead['结算会员号'], '移仓手续费', '0.00'))
+        # rows.append((temphead['结算会员号'], '当日实有货币资金余额', str(self.__Balance_cf)))
+        # rows.append((temphead['结算会员号'],'其中：交易保证金', str(self.__Margin_Occupied)))
+        # rows.append((temphead['结算会员号'],  '结算准备金', str(self.__Fund_Avail)))
+        # rows.append((temphead['结算会员号'],  '减：交易保证金', str(self.__Margin_Occupied)))
+        # rows.append((temphead['结算会员号'],  '当日结算准备金余额', str(self.__Fund_Avail)))
+        # rows.append((temphead['结算会员号'],  '加：申报划入金额', '0.00'))
+        # rows.append((temphead['结算会员号'],  '减：申报划出金额', '0.00'))
+        # rows.append((temphead['结算会员号'],  '下一交易日开仓准备金', str(self.__Fund_Avail)))
+        # rows.append((temphead['结算会员号'], '其它', '-' ))
+        # rows.append((temphead['结算会员号'], '应收手续费', str(self.__Commission )))
+        # rows.append( (temphead['结算会员号'], '实有货币资金变动', str(float(self.__MTM) + float(self.__Realized )) ))
+        # rows.append((temphead['结算会员号'], '其中：交易保证金变动', '0.00' ))
+        # rows.append((temphead['结算会员号'], '结算准备金变动', '0.00'))
+        #
+        # s =  r'上一交易日实有货币资金余额'
+        # #s.decode('UTF-8')
+        # #table.append( ('13887', '上一交易日实有货币资金余额', '10000.00') )
+        # for datum in rows:
+        #     #table.append(datum)
+        #     copyTable.append(datum)
+        #
+        # copyTable.close()
+        # table.close()
+        return
+
+    def writeDbf(self):
+
+
+        return
     def cleanRawTxt(self,txt):
         global pBillDicts
 

@@ -199,7 +199,7 @@ def ironing(parentBill, childBills=[]):
             filter = (parentPosition['合约'] == row["合约代码"])
             #make sure that only one row is returned
             # data.irow(0)
-            parent_row = parentPosition[filter].irow(0)
+            parent_row = parentPosition[filter].iloc[0]
             # if len(parent_row) != 1:
             #     # raise Exception("Invalid level!", level)
             #     raise Exception("More than 1 parent bill row!", len(parent_row))
@@ -325,8 +325,9 @@ def main():
             feeReplace(parentBill, childBills)
 
             for each_child in childBills:
-                print(each_child.transList)
-                print(each_child.positionList)
+                # print(each_child.transList)
+                # print(each_child.positionList)
+                each_child.writeDbf()
 
 
 

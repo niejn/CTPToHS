@@ -2,13 +2,13 @@
 import os
 import re
 import datetime
-
+import traceback
 from decimal import *
 from prettytable import *
 import dbf
 import pandas as pd
 from KingNewSchema import *
-
+from KingNewSchema import GSaccShema
 import logging
 import logging.handlers
 import logging.config
@@ -17,7 +17,7 @@ from billRead import Bill
 #----------------------------------------------------------------------
 logging.config.fileConfig('logging.conf')
 
-child_logger = logging.getLogger('bill')
+child_logger = logging.getLogger('childbill')
 #logger = logging.getLogger('billRead')
 child_logger.info('test child bill logger')
 
@@ -235,6 +235,395 @@ class childBill(Bill):
                 # pdata[eachCol] = pdata[eachCol].astype(Decimal)
                 #print(pdata[eachCol])
         #print(pdata.dtypes)
+
+        return
+    def computeTransFee(self):
+        global GStransactionRecord
+
+        tTransList = self.transList
+        setDet = {}
+        for index, row in tTransList.iterrows():
+            if row[GStransactionRecord['Instrument']] not in setDet:
+                tempSDNode = {}
+                tempSDNode['卖'] = 0
+                tempSDNode['买'] = 0
+                tempSDNode['卖成交价'] = 0
+                tempSDNode['买成交价'] = 0
+                if '买' in row[GStransactionRecord['B/S']]:
+                    tempSDNode['买'] = int(row[GStransactionRecord['Lots']])
+                    tempSDNode['买成交价'] = Decimal(row[GStransactionRecord['Price']])
+                else:
+                    tempSDNode['卖'] = int(row[GStransactionRecord['Lots']])
+                    tempSDNode['卖成交价'] = Decimal(row[GStransactionRecord['Price']])
+                tempSDNode['手续费'] = Decimal(row[GStransactionRecord['Fee']])
+                tempSDNode['合约'] = row[GStransactionRecord['Instrument']]
+                tempSDNode['投/保'] = row[GStransactionRecord['S/H']]
+                setDet[row[GStransactionRecord['Instrument']]] = tempSDNode
+            else:
+                tempSDNode = setDet[row[GStransactionRecord['Instrument']]]
+                #print(tempSDNode)
+                if '买' in row[GStransactionRecord['B/S']]:
+                    oldBuyAvg = tempSDNode['买成交价']
+                    oldBuySum = tempSDNode['买']
+                    nodeBuyAvg = Decimal(row[GStransactionRecord['Price']])
+                    nodeBuySum = int(row[GStransactionRecord['Lots']])
+                    newBuyAvg = oldBuyAvg * oldBuySum + nodeBuyAvg * nodeBuySum
+                    newBuyAvg = newBuyAvg / (oldBuySum + nodeBuySum)
+                    tempSDNode['买成交价'] = newBuyAvg
+                    tempSDNode['买'] += int(row[GStransactionRecord['Lots']])
+                else:
+                    oldSellAvg = tempSDNode['卖成交价']
+                    oldSellSum = tempSDNode['卖']
+                    nodeSellAvg = Decimal(row[GStransactionRecord['Price']])
+                    nodeSellSum = int(row[GStransactionRecord['Lots']])
+                    newSellAvg = oldSellAvg * oldSellSum + nodeSellAvg * nodeSellSum
+                    newSellAvg = newSellAvg / (oldSellSum + nodeSellSum)
+
+                    tempSDNode['卖成交价'] = newSellAvg
+                    tempSDNode['卖'] += int(row[GStransactionRecord['Lots']])
+                tempSDNode['手续费'] += Decimal(row[GStransactionRecord['Fee']])
+
+
+        self.__transfee = setDet
+        return setDet
+    def readPosConfig(self):
+        self.IDToMultiplier = {}
+        self.__customer_Clientid = {}
+        self.__customer_Userid = {}
+        self.__broker_Partid = {}
+        self.__FutToExchange = {}
+        self.__FutToPartid = {}
+        self.__FutToClientid = {}
+        config = open('./futuresConfig.txt', 'r')
+        textlist = config.readlines()
+        futureID = re.compile(u'[a-zA-Z]+');
+        multiplier = re.compile(u'\d+');
+        for item in textlist:
+            id = futureID.findall(item)
+            mul = multiplier.findall(item)
+            self.IDToMultiplier[id[0].upper()] = int(mul[0])
+
+        config.close()
+
+        accConfig = open('./acountConfig.txt', 'r')
+        textlist = accConfig.readlines()
+        ID = re.compile(u'[a-zA-Z_a-zA-Z]+');
+        multiplier = re.compile(u'\d+');
+        # customer_Clientid = {}
+        # customer_Userid = {}
+        # broker_Partid = {}
+        operater = {"customer_Clientid": self.__customer_Clientid, "customer_Userid": self.__customer_Userid, "broker_Partid": self.__broker_Partid}
+        #accdata = {}
+        temp = {}
+        key = ''
+        for item in textlist:
+
+            if "#" in item:
+                id = ID.findall(item)
+                temp = operater[id[0]]
+            else:
+
+                id = ID.findall(item)
+                mul = multiplier.findall(item)
+                temp[id[0]] = mul[0]
+        accConfig.close()
+
+        futConfig = open('./config.ini', 'r')
+        textlist = futConfig.readlines()
+        getWord = re.compile(u'[a-zA-Z]+');
+        multiplier = re.compile(u'\d+');
+
+        tExchange = ''
+        tFuture = ''
+        for item in textlist:
+
+            if "#" in item:
+                tWords = getWord.findall(item)
+                tExchange = tWords[0]
+            else:
+                tWords = getWord.findall(item)
+                tFuture = tWords[0]
+                self.__FutToExchange[tFuture] = tExchange
+                self.__FutToClientid[tFuture] = self.__customer_Clientid[tExchange]
+                self.__FutToPartid[tFuture] = self.__broker_Partid[tExchange]
+
+
+
+        return
+    def genTable(self):
+        templist = []
+        processedRec = {} #to record processed settlement
+        global GSpositions
+
+        tposList = self.positionList
+        for index, row in tposList.iterrows():
+            instrument = row[GSpositions['Instrument']]
+            buyHolding = 0
+            sellHolding = 0
+            if instrument not in processedRec:
+                if '买' in row[GSpositions['B/S']]:
+                    buyHolding = int(row[GSpositions['Lots']])
+                else:
+                    sellHolding = int(row[GSpositions['Lots']])
+                getWord = re.compile(u'[a-zA-Z]+');
+                futureHead = getWord.findall(row[GSpositions['Instrument']])
+                temp_partid = self.__FutToPartid[futureHead[0].upper()]
+                temp_clientid = self.__FutToClientid[futureHead[0].upper()]
+                temp_Margin = 0
+                temp_Margin = float(row[GSpositions['MarginOccupied']])
+                oneTabRow = [temp_partid, temp_clientid, row[GSpositions['Instrument']], float(row[GSpositions['SttlToday']]), 0, 0, 0, 0, 0, 0, 0.00, 0.00,buyHolding, sellHolding, temp_Margin, float(row[GSpositions['MTMP/L']]), 0.00 ]
+                processedRec[instrument] = oneTabRow
+            else:
+                if '买' in row[GSpositions['B/S']]:
+                    buyHolding = int(row[GSpositions['Lots']])
+                else:
+                    sellHolding = int(row[GSpositions['Lots']])
+                existRow = processedRec[instrument]
+                existRow[12] += buyHolding
+                existRow[13] += sellHolding
+                #判断是否是单边最大方向，如果是，则更新保证金占用字段，如果不是则不更新
+
+                temp_Margin = float(row[GSpositions['MarginOccupied']])
+                existRow[14] += temp_Margin
+                # if float(onePos['保证金占用']) > existRow[15]:
+                #     existRow[14] = float(onePos['保证金占用'])
+                existRow[15] += float(row[GSpositions['MTMP/L']])
+                processedRec[instrument] = existRow
+
+        if self.transactionTxt:
+            for instrument in self.__transfee:
+                tRec = self.__transfee[instrument]
+                if tRec['合约'] in processedRec:
+                    tFee = round(tRec['手续费'],2)
+                    processedRec[tRec['合约']][16] = tFee
+                else:
+                    buyHolding = tRec['买']
+                    sellHolding = tRec['卖']
+                    #float(onePos['结算价'])
+                    tclearPrice = round(tRec['卖成交价'],2)
+                    #float(onePos['保证金占用'])
+                    tmargin = 0.0
+                    #float(onePos['持仓盯市盈亏'])
+                    tactual = 0.0
+                    getWord = re.compile(u'[a-zA-Z]+');
+                    futureHead = getWord.findall(tRec['合约'])
+                    temp_partid = self.__FutToPartid[futureHead[0].upper()]
+                    temp_clientid = self.__FutToClientid[futureHead[0].upper()]
+                    tFee = round(tRec['手续费'],2)
+                    tRow = [temp_partid, temp_clientid, tRec['合约'], tclearPrice, 0, 0, 0, 0, 0, 0, 0.00, 0.00,buyHolding, sellHolding, tmargin, tactual, tFee]
+                    processedRec[tRec['合约']] = tRow
+
+        return processedRec
+    def writePosDbf(self, path):
+        temphead = {}
+        temphead['结算会员号'] = str(self.__accNum)
+        table = dbf.Table(path)
+        table.open()
+        try:
+            copyTable = table.new('./output/'+ self.__accNum + '_' + self.__date + '_settlementdetail.dbf')
+        except PermissionError as e:
+            print(e)
+            print("dbf file already has been opened, please close it and restart the app")
+        copyTable.open()
+
+        rowVals = []
+        # if self.transactionTxt:
+        #     self.computeTransFee()
+        # self.readPosConfig()
+        processedRec = self.genTable()
+        # self.__genTable = processedRec.values()
+        rowVals = processedRec.values()
+        for oneRow in rowVals:
+            tempRecord = []
+            for data in oneRow:
+                tempRecord.append(str(data))
+            # if Gdebug:
+            #     print(tuple(tempRecord))
+            #table.append(tuple(tempRecord))
+            copyTable.append(tuple(tempRecord))
+            #tempRecord.clear()
+
+        copyTable.close()
+        table.close()
+
+
+        return
+
+    def assignAcc(self):
+        self.__Balance_bf = 0.00
+        self.__Deposit = 0.00
+        self.__Realized = 0.00
+        self.__MTM = 0.00
+        self.__Commission = 0.00
+        self.__Delivery_Fee = 0.00
+        self.__Balance_cf = 0.00
+        self.__Margin_Occupied = 0.00
+        self.__Fund_Avail = 0.00
+        self.__Risk_Degree = 0.00
+        self.__Currency = 'CNY'
+        self.__account = 0
+        self.__mydate = ''
+        self.__ChgInFund = 0.0
+        self.__Payment = 0.0
+        try:
+            NameToValue = self.accountDict
+            self.__Balance_bf = float(NameToValue[GSaccShema['PreBalance']])
+            self.__Delivery_Fee = float(NameToValue[GSaccShema['DeliveryFee']])
+                #self.__Deposit = float(NameToValue['出 入 金'])
+            self.__Deposit = float(NameToValue[GSaccShema['DepositWithdrawal']])
+            self.__Balance_cf = float(NameToValue[GSaccShema['Balancecf']])
+            self.__Realized = float(NameToValue[GSaccShema['RealizedPL']])
+            self.__Margin_Occupied = float(NameToValue[GSaccShema['MarginOccupied']])
+            self.__MTM = float(NameToValue[GSaccShema['MTMPL']])
+            self.__Fund_Avail = float(NameToValue[GSaccShema['FundAvail']])
+            self.__Commission = float(NameToValue[GSaccShema['Fee']])
+            self.__Risk_Degree = float(NameToValue[GSaccShema['RiskDegree']])
+            self.__Currency = 'CNY'
+            self.__ChgInFund = 0.00 + self.__MTM - self.__Commission -self.__Payment
+        except KeyError as e:
+            print("金牛导出结算单字段名发生改变，请联系开发人员")
+            print(e)
+            traceback.print_exc(file=sys.stdout)
+        except Exception as e:
+            print(e)
+            traceback.print_exc(file=sys.stdout)
+        return
+    def writeAccDbf(self, path):
+        global  GSaccShema
+
+        # GSaccShema = {"PreBalance":'上次结算资金', 'DeliveryFee':'交割手续费', 'DepositWithdrawal': '出入金',
+        #     'Balancecf':'期末结存', 'RealizedPL':'平仓盈亏', 'MarginOccupied':'保证金占用', 'MTMPL':'持仓盈亏',
+        #     'Fund Avail':'可用资金', 'Fee':'手续费', 'RiskDegree':'风险度'}
+        # taccDict = self.accountDict
+        # print(taccDict)
+
+        self.assignAcc()
+        temphead = {}
+        temphead['结算会员号'] = str(self.__accNum)
+        table = dbf.Table(path)
+        table.open()
+        copyTable = table.new('./output/'+ self.__accNum + '_' + self.__date + '_capital.dbf')
+        copyTable.open()
+
+
+        rows = []
+        rows.append((temphead['结算会员号'], '上一交易日实有货币资金余额', str(self.__Balance_bf)))
+        rows.append((temphead['结算会员号'],'加：当日收入资金', str(self.__Deposit)))
+        rows.append((temphead['结算会员号'], '当日盈亏', str(self.__MTM)))
+        rows.append((temphead['结算会员号'],'减：当日付出资金', str(self.__Payment)))
+        rows.append((temphead['结算会员号'], '手续费', str(self.__Commission)))
+        rows.append((temphead['结算会员号'], '其中：交易手续费', str(self.__Commission)))
+        rows.append((temphead['结算会员号'], '结算手续费', '0.00'))
+        rows.append((temphead['结算会员号'],'交割手续费', '0.00'))
+        rows.append((temphead['结算会员号'], '移仓手续费', '0.00'))
+        rows.append((temphead['结算会员号'], '当日实有货币资金余额', str(self.__Balance_cf)))
+        rows.append((temphead['结算会员号'],'其中：交易保证金', str(self.__Margin_Occupied)))
+        rows.append((temphead['结算会员号'],  '结算准备金', str(self.__Fund_Avail)))
+        rows.append((temphead['结算会员号'],  '减：交易保证金', str(self.__Margin_Occupied)))
+        rows.append((temphead['结算会员号'],  '当日结算准备金余额', str(self.__Fund_Avail)))
+        rows.append((temphead['结算会员号'],  '加：申报划入金额', '0.00'))
+        rows.append((temphead['结算会员号'],  '减：申报划出金额', '0.00'))
+        rows.append((temphead['结算会员号'],  '下一交易日开仓准备金', str(self.__Fund_Avail)))
+        rows.append((temphead['结算会员号'], '其它', '-' ))
+        rows.append((temphead['结算会员号'], '应收手续费', str(self.__Commission )))
+        rows.append( (temphead['结算会员号'], '实有货币资金变动', str(float(self.__MTM) + float(self.__Realized )) ))
+        rows.append((temphead['结算会员号'], '其中：交易保证金变动', '0.00' ))
+        rows.append((temphead['结算会员号'], '结算准备金变动', '0.00'))
+
+        s =  r'上一交易日实有货币资金余额'
+        #s.decode('UTF-8')
+        #table.append( ('13887', '上一交易日实有货币资金余额', '10000.00') )
+        for datum in rows:
+            #table.append(datum)
+            copyTable.append(datum)
+
+        copyTable.close()
+        table.close()
+        return
+
+    def writeTransDbf(self, path):
+
+        tTransaction = self.transList
+        table = dbf.Table(path)
+        table.open()
+        copyTable = table.new('./output/'+ self.__accNum + '_' + self.__date + '_Trade.dbf')
+        copyTable.open()
+        tempTime = "9:30:00"
+        timedelta = datetime.timedelta(minutes=1)
+        pivotTime = datetime.datetime.strptime(tempTime,'%H:%M:%S')
+        pivotOrderid = 400000
+        #transaction
+        global GStransactionRecord
+
+        for index, row in tTransaction.iterrows():
+            futureID = re.compile(u'[a-zA-Z]+');
+            try:
+                tFuture = futureID.findall(row[GStransactionRecord['Instrument']].upper())
+            except KeyError as e:
+                print(e)
+                traceback.print_exc(file=sys.stdout)
+            except Exception as e:
+                print(e)
+                traceback.print_exc(file=sys.stdout)
+            try:
+                TradeAmount = int(row[GStransactionRecord['Lots']]) * float(row[GStransactionRecord['Price']]) * self.IDToMultiplier[tFuture[0]]
+            except KeyError as e:
+                print(e)
+                print("合约不存在，请补全配置文件futuresConfig.txt")
+                print("print exc")
+                traceback.print_exc(file=sys.stdout)
+
+            getWord = re.compile(u'[a-zA-Z]+');
+            futureHead = getWord.findall(row[GStransactionRecord['Instrument']])
+            temp_partid = self.__FutToPartid[futureHead[0].upper()]
+            temp_clientid = self.__FutToClientid[futureHead[0].upper()]
+            temp_Userid = self.__customer_Userid["Userid"]
+            strTime = pivotTime.strftime('%X')
+            pivotTime = pivotTime + timedelta
+            strOrderid = str(pivotOrderid)
+            pivotOrderid = pivotOrderid + 1
+
+
+            if len(row[GStransactionRecord['Trans.No.']]) > 12:
+                oneTabTrade = (temp_partid, temp_clientid, row[GStransactionRecord['Instrument']], row[GStransactionRecord['Trans.No.']][-12:],
+                               str(row[GStransactionRecord['Lots']]), str(row[GStransactionRecord['Price']]), str(TradeAmount), strTime, row[GStransactionRecord['B/S']],
+                               row[GStransactionRecord['O/C']], strOrderid, temp_Userid)
+            else:
+
+                oneTabTrade = (temp_partid, temp_clientid, row[GStransactionRecord['Instrument']],
+                               row[GStransactionRecord['Trans.No.']], str(row[GStransactionRecord['Lots']]),
+                               str(row[GStransactionRecord['Price']]), str(TradeAmount), strTime,
+                               row[GStransactionRecord['B/S']], row[GStransactionRecord['O/C']],
+                               strOrderid, temp_Userid)
+            #table.append(oneTabTrade)
+            #print(oneTabTrade)
+            #print('====================')
+
+
+            copyTable.append(oneTabTrade)
+
+        copyTable.close();
+        table.close()
+
+        return
+    def writeDbf(self, path =  './template'):
+        # self.__myAcc.writeDbf(self.__myDBFPath + '/capital.dbf')
+        accDbfName = '/capital.dbf'
+        posDbfName = '/settlementdetail.dbf'
+        transDbfName = '/Trade.dbf'
+
+        self.readPosConfig()
+        if self.transactionTxt:
+            self.computeTransFee()
+
+        if self.accountTxt:
+            self.writeAccDbf(path + accDbfName)
+
+        if self.positionsTxt:
+            self.writePosDbf(path + posDbfName)
+
+        if self.transactionTxt:
+            self.writeTransDbf(path + transDbfName)
 
         return
     def cleanRawTxt(self,txt):
