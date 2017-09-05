@@ -391,40 +391,41 @@ class childBill(Bill):
         processedRec = {} #to record processed settlement
         global GSpositions
 
-        tposList = self.positionList
-        for index, row in tposList.iterrows():
-            instrument = row[GSpositions['Instrument']]
-            buyHolding = 0
-            sellHolding = 0
-            if instrument not in processedRec:
-                if '买' in row[GSpositions['B/S']]:
-                    buyHolding = int(row[GSpositions['Lots']])
+        if hasattr(self, 'positionList'):
+            tposList = self.positionList
+            for index, row in tposList.iterrows():
+                instrument = row[GSpositions['Instrument']]
+                buyHolding = 0
+                sellHolding = 0
+                if instrument not in processedRec:
+                    if '买' in row[GSpositions['B/S']]:
+                        buyHolding = int(row[GSpositions['Lots']])
+                    else:
+                        sellHolding = int(row[GSpositions['Lots']])
+                    getWord = re.compile(u'[a-zA-Z]+');
+                    futureHead = getWord.findall(row[GSpositions['Instrument']])
+                    temp_partid = self.__FutToPartid[futureHead[0].upper()]
+                    temp_clientid = self.__FutToClientid[futureHead[0].upper()]
+                    temp_Margin = 0
+                    temp_Margin = float(row[GSpositions['MarginOccupied']])
+                    oneTabRow = [temp_partid, temp_clientid, row[GSpositions['Instrument']], float(row[GSpositions['SttlToday']]), 0, 0, 0, 0, 0, 0, 0.00, 0.00,buyHolding, sellHolding, temp_Margin, float(row[GSpositions['MTMP/L']]), 0.00 ]
+                    processedRec[instrument] = oneTabRow
                 else:
-                    sellHolding = int(row[GSpositions['Lots']])
-                getWord = re.compile(u'[a-zA-Z]+');
-                futureHead = getWord.findall(row[GSpositions['Instrument']])
-                temp_partid = self.__FutToPartid[futureHead[0].upper()]
-                temp_clientid = self.__FutToClientid[futureHead[0].upper()]
-                temp_Margin = 0
-                temp_Margin = float(row[GSpositions['MarginOccupied']])
-                oneTabRow = [temp_partid, temp_clientid, row[GSpositions['Instrument']], float(row[GSpositions['SttlToday']]), 0, 0, 0, 0, 0, 0, 0.00, 0.00,buyHolding, sellHolding, temp_Margin, float(row[GSpositions['MTMP/L']]), 0.00 ]
-                processedRec[instrument] = oneTabRow
-            else:
-                if '买' in row[GSpositions['B/S']]:
-                    buyHolding = int(row[GSpositions['Lots']])
-                else:
-                    sellHolding = int(row[GSpositions['Lots']])
-                existRow = processedRec[instrument]
-                existRow[12] += buyHolding
-                existRow[13] += sellHolding
-                #判断是否是单边最大方向，如果是，则更新保证金占用字段，如果不是则不更新
+                    if '买' in row[GSpositions['B/S']]:
+                        buyHolding = int(row[GSpositions['Lots']])
+                    else:
+                        sellHolding = int(row[GSpositions['Lots']])
+                    existRow = processedRec[instrument]
+                    existRow[12] += buyHolding
+                    existRow[13] += sellHolding
+                    #判断是否是单边最大方向，如果是，则更新保证金占用字段，如果不是则不更新
 
-                temp_Margin = float(row[GSpositions['MarginOccupied']])
-                existRow[14] += temp_Margin
-                # if float(onePos['保证金占用']) > existRow[15]:
-                #     existRow[14] = float(onePos['保证金占用'])
-                existRow[15] += float(row[GSpositions['MTMP/L']])
-                processedRec[instrument] = existRow
+                    temp_Margin = float(row[GSpositions['MarginOccupied']])
+                    existRow[14] += temp_Margin
+                    # if float(onePos['保证金占用']) > existRow[15]:
+                    #     existRow[14] = float(onePos['保证金占用'])
+                    existRow[15] += float(row[GSpositions['MTMP/L']])
+                    processedRec[instrument] = existRow
 
         if self.transactionTxt:
             for instrument in self.__transfee:
@@ -657,7 +658,11 @@ class childBill(Bill):
 
         if self.positionsTxt:
             self.writePosDbf(path + posDbfName)
-
+        elif self.transactionTxt:
+            self.writePosDbf(path + posDbfName)
+            print()
+        else:
+            print()
         if self.transactionTxt:
             self.writeTransDbf(path + transDbfName)
 
@@ -749,8 +754,11 @@ def main():
 
     path = './txt'
     subAccPath = './subacc/120200889072017-02-16.txt';
+    # childBills = getChildBill(childBillPath)
+    #
     txt = readSingleBill(subAccPath)
     cbill = childBill(txt)
+    childBills = getChildBill(childBillPath)
     # parentAccPath = "./parentAcc"
     # presentCTPBill = './presentCTPBill'
 

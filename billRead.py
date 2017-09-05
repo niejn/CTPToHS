@@ -630,10 +630,11 @@ class ParentBillList(BillList):
         textContainer = []
         txtDict = {}
         for file in files:
-            txt_key = self.getAcc(file)
+            # txt_key = self.getAcc(file)
             file = path + '/' + file
             if not os.path.isfile(file):
                 continue
+            txt_key = self.getAcc(file)
             if file.endswith('txt'):
                 with open(file, 'rb') as srcFile:
                     #content = fp.read().decode('utf-8')

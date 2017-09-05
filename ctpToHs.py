@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # import xdrlib ,sys
 # import copy
-# import os
+import os
 from datetime import *
-
-
+import traceback
+import pandas as pd
 # from KingNewSchema import *
 from billRead import *
 from childBillRead import  childBill
@@ -71,7 +71,7 @@ def readBill(path):
         return
     with open(file, 'r') as srcFile:
         textlist = srcFile.readlines()
-    srcFile.close()
+
     return textlist
 #need read gbk txt error
 def readBill_first(path):
@@ -214,13 +214,19 @@ def ironing(parentBill, childBills=[]):
             parDir = parent_row["较大单边"]
             if row['持仓方向'] == parent_row["较大单边"]:
                 EPSINON = 0.000001
-                if row['保证金占用'] - parent_row["保证金占用"] <= EPSINON:
-                    continue
+                temp_child_margin = row['保证金占用']
+                temp_Parent_margin = parent_row["保证金占用"]
+                temp_res = temp_child_margin - temp_Parent_margin
+                #bugfix, 如果保证金相等，那么退出来计算，应该考虑手数不相同，保证金相同的情况：
+                # if abs(row['保证金占用'] - parent_row["保证金占用"]) <= EPSINON:
+                #
+                #     continue
                 cPos = row['手数']
                 if parent_row["较大单边"]:
                     pPos = parent_row["买持"];
                 else:
                     pPos = parent_row["卖持"];
+
                 if cPos <= pPos:
 
                     print(row['保证金占用'])
@@ -272,23 +278,39 @@ def feeReplace(parentBill, childBills=[]):
         for index, row in child_trans.iterrows():
             cFieldLen = len(row["id"])
             tRowKey = row["id"]
+            tOriginKey = row["id"]
             if cFieldLen < 8:
                 tRowKey = tRowKey.zfill(8)
             filter = (paTrans['成交序号'] == tRowKey)
+            originFilter = (paTrans['成交序号'] == tOriginKey)
             try:
-                parent_row = paTrans[filter].iloc[0]
+                temp = paTrans[filter]
+                originRes = paTrans[originFilter]
+                if len(paTrans[filter]) > 0:
+                    parent_row = paTrans[filter].iloc[0]
+                elif not originRes.empty:
+
+                    parent_row = originRes.iloc[0]
+                else:
+                    raise Exception("len(paTrans[filter]) == 0", paTrans['成交序号'])
             except IndexError as e:
+                print("Error:")
                 print(paTrans['成交序号'])
                 print(row["id"])
                 traceback.print_exc(file=sys.stdout)
+                cth_logger.error(e)
+
             except Exception as e:
+                print("Error:")
                 print(paTrans['成交序号'])
                 print(row["id"])
                 traceback.print_exc(file=sys.stdout)
+                cth_logger.error(e)
             # print(parent_row)
             # print(row)
             EPSINON = 0.000001
-            if row['手续费'] - parent_row["手续费"] <= EPSINON:
+            print(row)
+            if abs(row['手续费'] - parent_row["手续费"]) <= EPSINON:
                 continue
             tfee = parent_row["手续费"]
             each_child.transList.set_value(index, '手续费', tfee)
