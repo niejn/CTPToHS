@@ -4,9 +4,9 @@ block_cipher = None
 
 
 a = Analysis(['ctpToHs.py'],
-             pathex=['C:\\Users\\lenovo\\AppData\\Local\\Programs\\Python\\Python35\\Lib\\site-packages\\PyQt5\\Qt\\bin', 'C:\\Users\\lenovo\\PycharmProjects\\ctpToHS'],
-             binaries=None,
-             datas=None,
+             pathex=['C:\\Users\\lenovo\\PycharmProjects\\ctpToHS'],
+             binaries=[],
+             datas=[],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
